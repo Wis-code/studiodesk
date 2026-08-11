@@ -1,0 +1,12 @@
+{
+  "name": "StudioDesk · Wiscode Studio",
+  "short_name": "StudioDesk",
+  "description": "Creative operations for Wiscode Studio",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#101720",
+  "theme_color": "#252E3D",
+  "icons": [
+    { "src": "./assets/studiodesk-mark.png", "sizes": "1280x1280", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

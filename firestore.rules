@@ -1,0 +1,222 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profilePath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasProfile() {
+      return signedIn() && exists(profilePath());
+    }
+
+    function profile() {
+      return get(profilePath()).data;
+    }
+
+    function isActive() {
+      return hasProfile() && profile().status == 'active';
+    }
+
+    function hasRole(role) {
+      return isActive() && profile().role == role;
+    }
+
+    function isOwner() { return hasRole('owner'); }
+    function isAdmin() { return hasRole('admin'); }
+    function isOwnerOrAdmin() { return isOwner() || isAdmin(); }
+    function isFinance() { return hasRole('finance'); }
+    function isManager() { return hasRole('project_manager') || hasRole('lead_designer'); }
+    function isInternal() {
+      return isOwnerOrAdmin() || isFinance() || isManager() || hasRole('worker') || hasRole('designer');
+    }
+
+    function projectPath(projectId) {
+      return /databases/$(database)/documents/projects/$(projectId);
+    }
+
+    function projectExists(projectId) {
+      return exists(projectPath(projectId));
+    }
+
+    function project(projectId) {
+      return get(projectPath(projectId)).data;
+    }
+
+    function canAccessProject(projectId) {
+      return isActive()
+        && projectExists(projectId)
+        && (
+          isOwnerOrAdmin()
+          || request.auth.uid in project(projectId).accessUserIds
+        );
+    }
+
+    function canManageProject(projectId) {
+      return isActive()
+        && projectExists(projectId)
+        && (
+          isOwnerOrAdmin()
+          || (isManager() && request.auth.uid in project(projectId).managementUserIds)
+        );
+    }
+
+    function isAnonymous() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    match /users/{uid} {
+      allow read: if isOwnerOrAdmin() || (isActive() && request.auth.uid == uid);
+      allow create, update, delete: if isOwnerOrAdmin();
+    }
+
+    match /clients/{clientId} {
+      allow read: if isOwnerOrAdmin() || isFinance() || isManager()
+        || (isActive() && request.auth.uid in resource.data.userIds);
+      allow create, update: if isOwnerOrAdmin() || isManager();
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if isActive() && (
+        isOwnerOrAdmin()
+        || request.auth.uid in resource.data.accessUserIds
+      );
+      allow create: if isOwnerOrAdmin() || isManager();
+      allow update: if canManageProject(projectId);
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if canAccessProject(resource.data.projectId);
+      allow create: if canManageProject(request.resource.data.projectId);
+      allow update: if canManageProject(resource.data.projectId)
+        || (
+          isActive()
+          && request.auth.uid in resource.data.assigneeIds
+          && request.resource.data.projectId == resource.data.projectId
+          && request.resource.data.assigneeIds == resource.data.assigneeIds
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'progressNote', 'blockedReason', 'submittedAt', 'updatedAt'
+          ])
+        );
+      allow delete: if canManageProject(resource.data.projectId);
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if canAccessProject(resource.data.projectId);
+      allow create: if canAccessProject(request.resource.data.projectId)
+        && request.resource.data.actorId == request.auth.uid;
+      allow update: if canManageProject(resource.data.projectId);
+      allow delete: if canManageProject(resource.data.projectId);
+    }
+
+    match /activity/{activityId} {
+      allow read: if canAccessProject(resource.data.projectId);
+      allow create: if canAccessProject(request.resource.data.projectId)
+        && request.resource.data.actorId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /portfolio/{portfolioId} {
+      allow read: if isOwnerOrAdmin()
+        || (isActive() && request.auth.uid in resource.data.authorizedUserIds);
+      allow create, update: if isOwnerOrAdmin() || isManager();
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /quotes/{quoteId} {
+      allow read: if isFinance() || canAccessProject(resource.data.projectId);
+      allow create, update: if isOwnerOrAdmin() || isFinance() || isManager();
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isFinance() || canAccessProject(resource.data.projectId);
+      allow create, update: if isOwnerOrAdmin() || isFinance();
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isFinance() || canAccessProject(resource.data.projectId);
+      allow create, update: if isOwnerOrAdmin() || isFinance();
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /expenses/{expenseId} {
+      allow read, create, update: if isOwnerOrAdmin() || isFinance();
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /standards/{standardId} {
+      allow read: if isInternal();
+      allow create, update, delete: if isOwnerOrAdmin();
+    }
+
+    // Sanitized public catalogue. Never place internal standards/process notes here.
+    match /catalogAssets/{assetId} {
+      allow read: if resource.data.published == true || isOwnerOrAdmin();
+      allow create, update, delete: if isOwnerOrAdmin();
+    }
+
+    // Public commercial settings only: currency, foundation price, deposit rate.
+    match /publicConfig/{configId} {
+      allow read: if resource.data.published == true || isOwnerOrAdmin();
+      allow create, update, delete: if isOwnerOrAdmin();
+    }
+
+    // Public visitors receive an invisible anonymous Auth identity only at submission.
+    match /packageRequests/{requestId} {
+      allow create: if isAnonymous()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'new'
+        && request.resource.data.keys().hasOnly([
+          'name','email','business','phone','note','selectedAssetIds','selectedAssets',
+          'estimatedTotal','currency','createdBy','status','createdAt'
+        ]);
+      allow read, update: if isOwnerOrAdmin() || isManager();
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /legalAcceptances/{acceptanceId} {
+      allow read: if isOwnerOrAdmin()
+        || (isActive() && request.auth.uid == resource.data.userId);
+      allow create: if isActive()
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isActive() && request.auth.uid == resource.data.userId;
+      allow create: if isOwnerOrAdmin() || isManager();
+      allow update: if isActive()
+        && request.auth.uid == resource.data.userId
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt','seen','updatedAt']);
+      allow delete: if isActive() && request.auth.uid == resource.data.userId;
+    }
+
+    match /settings/{settingId} {
+      allow read: if isInternal();
+      allow write: if isOwnerOrAdmin();
+    }
+
+    match /termsVersions/{termsId} {
+      allow read: if resource.data.published == true || isOwnerOrAdmin();
+      allow write: if isOwnerOrAdmin();
+    }
+
+    match /workerInvites/{inviteId} {
+      allow read, create, update, delete: if isOwnerOrAdmin();
+    }
+
+    // Safe default for new collections while the app evolves: owner/admin only.
+    match /{document=**} {
+      allow read, write: if isOwnerOrAdmin();
+    }
+  }
+}
