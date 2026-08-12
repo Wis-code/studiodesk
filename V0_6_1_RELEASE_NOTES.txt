@@ -1,0 +1,14 @@
+StudioDesk V0.6.1
+
+Focused UI correction built from the working V0.6 GitHub ZIP supplied after the syntax fix.
+
+- Light/Dark theme with navy retained as a Light-mode secondary colour
+- Theme persistence on the device
+- Circular centered avatar cropping for arbitrary photo shapes
+- Android project-detail overflow/reflow correction
+- Swipeable project tabs and responsive summary/action layouts
+- Faster mobile rendering by reducing expensive background filters
+- Immediate button press feedback and async busy indicators
+- Existing V0.6 business architecture and one-time onboarding preserved
+
+See docs/V0_6_1_UI_CORRECTION.md for acceptance tests and deployment notes.
