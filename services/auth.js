@@ -3,7 +3,7 @@ import { getFirebaseServices } from './firebase.js';
 export async function signInWithEmail(email, password) {
   const f = await getFirebaseServices();
   if (!f) throw new Error('Firebase is not configured.');
-  return f.authSdk.signInWithEmailAndPassword(f.auth, email.trim(), password);
+  return f.authSdk.signInWithEmailAndPassword(f.auth, String(email||'').trim(), password);
 }
 
 export async function signInWithGoogle() {
@@ -12,6 +12,18 @@ export async function signInWithGoogle() {
   const provider = new f.authSdk.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   return f.authSdk.signInWithPopup(f.auth, provider);
+}
+
+export async function registerWithEmail(email, password) {
+  const f = await getFirebaseServices();
+  if (!f) throw new Error('Firebase is not configured.');
+  return f.authSdk.createUserWithEmailAndPassword(f.auth, String(email||'').trim(), password);
+}
+
+export async function resetPassword(email) {
+  const f = await getFirebaseServices();
+  if (!f) throw new Error('Firebase is not configured.');
+  return f.authSdk.sendPasswordResetEmail(f.auth, String(email||'').trim());
 }
 
 export async function signOutUser() {
@@ -30,9 +42,6 @@ export async function ensureAnonymousSession() {
 
 export async function watchAuth(callback) {
   const f = await getFirebaseServices();
-  if (!f) {
-    callback(null);
-    return () => {};
-  }
+  if (!f) { callback(null); return () => {}; }
   return f.authSdk.onAuthStateChanged(f.auth, callback);
 }

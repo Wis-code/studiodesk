@@ -1,72 +1,34 @@
 # StudioDesk
 
-StudioDesk is Wiscode Studio's design-business operating system: project intake, shoppable creative assets, diagnostic workflows, worker assignments, protected client review, finance, delivery gates, past-work archives and portfolio contribution tracking.
+StudioDesk is Wiscode Studio's creative-operations system for projects, clients, workers, tasks, research/moodboards, protected reviews, contracts, finance, delivery and portfolio history.
 
-## Current build: v0.3 live foundation
+## V0.4 acceptance rebuild
+The live V0.3 prototype proved Firebase connectivity and the visual direction, but acceptance testing exposed a workflow problem: too much of the app revolved around a branding Package Builder. V0.4 corrects that architecture.
 
-This build is wired to the Firebase project `studiodesk-20dc6` and uses the `(default)` Cloud Firestore database created in `africa-south1`.
+### Key model
+`Project` is the operating object. Services, package templates, contracts, invoices, moodboards, tasks and delivery are tools attached to a project when needed.
 
-### Working now
+A project can start from:
+1. an already agreed external quote,
+2. the service catalogue,
+3. a reusable package template,
+4. a custom commercial contract.
 
-- Premium responsive StudioDesk UI using the uploaded navy/mint brand mark.
-- Public package configurator with no visible sign-in required.
-- Firebase Email/Password and Google authentication.
-- Owner profile lookup through `users/{uid}`.
-- Live Firestore owner workspace subscriptions.
-- First-run seeding for editable standards and unpublished catalogue assets.
-- Live asset-price editing and publish toggles.
-- Fixed creative foundation + shoppable outputs.
-- Dependency-aware diagnostic engine with task deduplication.
-- Dynamic one-page/full Brand Guidelines eligibility.
-- Project creation that generates project tasks automatically.
-- Client records created with projects.
-- Manual invoice creation and payment recording.
-- Project/past-work architecture.
-- Worker/client role-aware navigation foundation.
-- Studio business settings and CAC/legal profile placeholder.
-- PWA manifest/service worker.
+### Roles
+Owner/Admin, Project Manager/Lead Designer, Designer/Worker, Finance and Client. New registrations are pending until approved by an Owner/Admin.
 
-### Deliberately not enabled yet
+### Firebase
+- Project: `studiodesk-20dc6`
+- Firestore: `(default)` in `africa-south1`
+- Hosting: Firebase Hosting
+- Heavy files: Google Drive links/integration boundary
 
-- Payment gateway. V1 records/verifies bank transfers manually.
-- Firebase Storage for heavy creative files. Google Drive is the intended asset store.
-- Automatic email sending. The UI/data architecture is ready for a later mail adapter/Cloud Function.
-- Worker self-invite/signup flow. Until that is implemented, worker Auth accounts are bootstrapped manually.
-- Google Drive OAuth. The data model is prepared, but the OAuth/client integration is not wired in this build.
-- Clean final-delivery automation. Release-gate state exists, but Drive package release is a later integration tranche.
-
-## Firebase
-
-Project: `studiodesk-20dc6`
-
-The Firebase Web config lives in `config/firebase-config.js`. Firebase Web API keys are client configuration identifiers; never add service-account JSON files, OAuth client secrets, card details or private keys to this repository.
-
-### Deploy Firestore rules/indexes
-
-The repository includes the expanded production rules in `firestore.rules`. Your currently published console rules are intentionally owner-only bootstrap rules. When ready to test workers/clients/public package requests, deploy the repository rules:
+### Deployment
+Publish the matching `firestore.rules` before testing the new self-registration/approval flows. Then deploy Hosting.
 
 ```bash
-firebase login
-firebase use studiodesk-20dc6
-firebase deploy --only firestore:rules,firestore:indexes
-```
-
-### Deploy Hosting
-
-```bash
+firebase deploy --only firestore:rules
 firebase deploy --only hosting
 ```
 
-## First live owner run
-
-1. Sign in with the Firebase Auth account whose Firestore user profile has `role: "owner"` and `status: "active"`.
-2. On the dashboard, choose **Initialize workspace**.
-3. Open **Standards & Pricing**.
-4. Review every starter price before publishing any public asset.
-5. Open **Settings** and set the actual fixed creative-foundation price and deposit rate.
-6. Create a test project from **Package Builder**.
-7. Confirm the project, client and generated tasks appear in Firestore.
-
-## Repository safety
-
-`.gitignore` excludes environment files, Firebase local cache, logs and private-key/service-account file patterns. Never commit billing credentials or Google service-account secrets.
+Do not commit service-account keys, billing/card data, passwords, OAuth client secrets or trusted mail provider secrets.

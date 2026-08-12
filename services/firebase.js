@@ -69,4 +69,12 @@ export const collections = Object.freeze({
   publicConfig: 'publicConfig',
   termsVersions: 'termsVersions',
   workerInvites: 'workerInvites',
+  serviceCategories: 'serviceCategories',
+  packageTemplates: 'packageTemplates',
+  contracts: 'contracts',
+  moodboards: 'moodboards',
+  moodboardItems: 'moodboardItems',
+  previews: 'previews',
+  messages: 'messages',
+  onboarding: 'onboarding',
 });

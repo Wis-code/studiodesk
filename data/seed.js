@@ -4,87 +4,100 @@ export const BRAND = {
   registeredCompany: 'Wiscode Innovations Limited',
   navy: '#252E3D',
   mint: '#66FECB',
+  font: 'Space Grotesk',
 };
 
-export const foundationSteps = [
-  { id:'brief', label:'Creative brief', weight:4, estimatedHours:1, status:'done' },
-  { id:'research', label:'Research', weight:8, estimatedHours:3, status:'done' },
-  { id:'moodboard', label:'Moodboarding', weight:8, estimatedHours:3, status:'review' },
-  { id:'direction', label:'Creative direction approval', weight:6, estimatedHours:1, status:'in-progress' },
+export const PROJECT_TYPES = [
+  { id:'single_graphic', label:'Single Graphic', description:'One-off flyer, poster, cover, social graphic or similar deliverable.' },
+  { id:'continuous_graphics', label:'Continuous Graphics', description:'Recurring or campaign-based graphic production.' },
+  { id:'branding', label:'Branding / Identity', description:'Logo systems, brand identity and related branded assets.' },
+  { id:'editorial', label:'Editorial / Publication', description:'Books, magazines, brochures, reports and editorial systems.' },
+  { id:'campaign', label:'Campaign / Marketing', description:'Multi-asset campaigns and marketing creative systems.' },
+  { id:'custom', label:'Custom Project', description:'Anything that does not fit a standard category.' },
 ];
 
-export const standards = {
+export const COMMERCIAL_ROUTES = [
+  { id:'external_quote', label:'Already quoted', description:'Use the agreed amount. Do not re-price the work inside StudioDesk.' },
+  { id:'service_catalog', label:'Build from services', description:'Select services from the catalogue and calculate a quote.' },
+  { id:'package_template', label:'Use package template', description:'Start from a reusable package and customize it.' },
+  { id:'custom_contract', label:'Custom commercial deal', description:'Enter scope, value and payment milestones manually.' },
+];
+
+export const serviceCategories = [
+  { id:'graphics', name:'Graphic Design', sortOrder:1 },
+  { id:'branding', name:'Branding & Identity', sortOrder:2 },
+  { id:'editorial', name:'Editorial & Publication', sortOrder:3 },
+  { id:'campaign', name:'Campaign & Marketing', sortOrder:4 },
+  { id:'custom', name:'Custom', sortOrder:99 },
+];
+
+export const services = [
+  { id:'flyer-design', categoryId:'graphics', name:'Flyer / Poster Design', description:'Single promotional or event graphic.', pricingMode:'custom', price:0, published:false, workflowTemplateId:'singleGraphic' },
+  { id:'social-design', categoryId:'graphics', name:'Social Media Graphic', description:'Single social creative or campaign unit.', pricingMode:'custom', price:0, published:false, workflowTemplateId:'singleGraphic' },
+  { id:'book-cover', categoryId:'editorial', name:'Book Cover Design', description:'Front cover or complete wrap depending on scope.', pricingMode:'custom', price:0, published:false, workflowTemplateId:'editorialCover' },
+  { id:'editorial-layout', categoryId:'editorial', name:'Editorial Layout', description:'Book, report, magazine or brochure layout.', pricingMode:'custom', price:0, published:false, workflowTemplateId:'editorialLayout' },
+  { id:'logo-system', categoryId:'branding', name:'Logo System', description:'Primary mark, variations and export suite.', pricingMode:'custom', price:0, published:false, workflowTemplateId:'logoSystem', guidelineEligible:true },
+  { id:'business-card', categoryId:'branding', name:'Business Card', description:'Front/back branded card with print-ready output.', pricingMode:'custom', price:0, published:false, workflowTemplateId:'brandAsset', guidelineEligible:true },
+  { id:'letterhead', categoryId:'branding', name:'Letterhead', description:'Digital and print letterhead system.', pricingMode:'custom', price:0, published:false, workflowTemplateId:'brandAsset', guidelineEligible:true },
+  { id:'social-kit', categoryId:'branding', name:'Social Media Kit', description:'Reusable branded social templates.', pricingMode:'custom', price:0, published:false, workflowTemplateId:'brandAsset', guidelineEligible:true },
+  { id:'packaging', categoryId:'branding', name:'Packaging Design', description:'Packaging direction and production artwork.', pricingMode:'custom', price:0, published:false, workflowTemplateId:'packaging', guidelineEligible:true },
+];
+
+export const workflowTemplates = {
+  singleGraphic: {
+    id:'singleGraphic', name:'Single Graphic',
+    steps:[
+      ['brief','Confirm brief & content',1],['references','Research / references',1],['concept','Design concept',3],['internal-review','Internal review',1],['client-preview','Protected client preview',1],['revision','Revisions if required',2],['qa','Final QA',1],['release','Final delivery release',1],
+    ]
+  },
   logoSystem: {
-    id:'logoSystem',
+    id:'logoSystem', name:'Logo System',
     steps:[
-      { id:'logo-exploration', label:'Logo concept exploration', weight:16, estimatedHours:8, status:'not-started' },
-      { id:'logo-refinement', label:'Logo refinement', weight:12, estimatedHours:5, status:'not-started' },
-      { id:'logo-review', label:'Internal logo review', weight:5, estimatedHours:1, status:'not-started' },
-      { id:'logo-presentation', label:'Client logo presentation', weight:5, estimatedHours:2, status:'not-started' },
-    ],
-    deliverables:[{id:'logo-master', label:'Master logo system'}],
-    dependencies:[{id:'core-direction', label:'Approved creative direction'}],
+      ['brief','Brand discovery / brief',1],['research','Research',2],['moodboard','Moodboard & direction',2],['concepts','Logo concept exploration',5],['internal-review','Internal review',1],['presentation','Protected client presentation',2],['refinement','Refinement',3],['qa','Identity QA',1],['release','Final logo package',1],
+    ]
   },
-  businessCard: {
-    id:'businessCard',
-    steps:[
-      { id:'card-content', label:'Confirm business card content', weight:2, estimatedHours:0.5, status:'not-started' },
-      { id:'card-design', label:'Business card design', weight:5, estimatedHours:2, status:'not-started' },
-      { id:'card-preflight', label:'Business card print preflight', weight:2, estimatedHours:0.5, status:'not-started' },
-    ],
-    deliverables:[{id:'card-final', label:'Business card — print ready'}],
-    dependencies:[{id:'logo-approved', label:'Approved logo system'}],
+  brandAsset: {
+    id:'brandAsset', name:'Brand Asset',
+    steps:[['content','Confirm asset content/specs',1],['design','Design asset',2],['internal-review','Internal review',1],['client-preview','Protected client preview',1],['preflight','Production preflight',1],['release','Final release',1]]
   },
-  letterhead: {
-    id:'letterhead',
-    steps:[
-      { id:'stationery-data', label:'Confirm stationery information', weight:2, estimatedHours:0.5, status:'not-started' },
-      { id:'letterhead-design', label:'Letterhead design', weight:4, estimatedHours:1.5, status:'not-started' },
-      { id:'letterhead-preflight', label:'Letterhead preflight', weight:2, estimatedHours:0.5, status:'not-started' },
-    ],
-    deliverables:[{id:'letterhead-final', label:'Letterhead — print ready'}],
-    dependencies:[{id:'logo-approved', label:'Approved logo system'}],
+  editorialCover: {
+    id:'editorialCover', name:'Editorial Cover',
+    steps:[['brief','Confirm manuscript / cover brief',1],['research','Research & visual direction',2],['concept','Cover concept',4],['review','Internal review',1],['preview','Protected client preview',1],['revision','Revision',2],['preflight','Print/digital preflight',1],['release','Final cover files',1]]
   },
-  socialKit: {
-    id:'socialKit',
-    steps:[
-      { id:'social-specs', label:'Confirm selected social channels', weight:2, estimatedHours:0.5, status:'not-started' },
-      { id:'social-system', label:'Develop social visual system', weight:6, estimatedHours:3, status:'not-started' },
-      { id:'social-exports', label:'Prepare social exports', weight:3, estimatedHours:1, status:'not-started' },
-    ],
-    deliverables:[{id:'social-final', label:'Social media kit'}],
-    dependencies:[{id:'logo-approved', label:'Approved logo system'}],
+  editorialLayout: {
+    id:'editorialLayout', name:'Editorial Layout',
+    steps:[['content-audit','Content audit',2],['style-system','Editorial style system',3],['layout','Layout production',6],['proof','Proof review',2],['corrections','Corrections',3],['preflight','Preflight',2],['release','Final publication files',1]]
   },
   packaging: {
-    id:'packaging',
-    steps:[
-      { id:'packaging-audit', label:'Packaging technical audit', weight:5, estimatedHours:2, status:'not-started' },
-      { id:'packaging-design', label:'Packaging design', weight:12, estimatedHours:6, status:'not-started' },
-      { id:'packaging-proof', label:'Packaging proof & preflight', weight:4, estimatedHours:2, status:'not-started' },
-    ],
-    deliverables:[{id:'packaging-final', label:'Packaging production files'}],
-    dependencies:[{id:'logo-approved', label:'Approved identity direction'}],
-  }
+    id:'packaging', name:'Packaging',
+    steps:[['technical-audit','Packaging technical audit',2],['research','Category research',2],['direction','Visual direction',2],['design','Packaging design',6],['proof','Proof & preflight',2],['release','Production files',1]]
+  },
 };
 
-export const assets = [
-  { id:'logo', name:'Logo System', price:70000, pricingMode:'fixed', standardId:'logoSystem', required:true, guidelineEligible:true, description:'Primary mark, responsive variations and export suite.' },
-  { id:'business-card', name:'Business Card', price:20000, pricingMode:'fixed', standardId:'businessCard', guidelineEligible:true, description:'Front/back branded card with print-ready output.' },
-  { id:'letterhead', name:'Letterhead', price:15000, pricingMode:'fixed', standardId:'letterhead', guidelineEligible:true, description:'Digital + print letterhead system.' },
-  { id:'social-kit', name:'Social Media Kit', price:40000, pricingMode:'fixed', standardId:'socialKit', guidelineEligible:true, description:'Selected platform assets and reusable templates.' },
-  { id:'packaging', name:'Packaging', startingPrice:50000, pricingMode:'starting', standardId:'packaging', guidelineEligible:true, description:'Packaging direction; final quote depends on format and complexity.' },
-  { id:'signage', name:'Signage System', price:35000, pricingMode:'fixed', standardId:'businessCard', guidelineEligible:true, description:'Core branded signage applications.' },
-  { id:'id-card', name:'ID Card', price:15000, pricingMode:'fixed', standardId:'businessCard', guidelineEligible:true, description:'Employee identity card design system.' },
+export const packageTemplates = [
+  { id:'starter-brand', name:'Starter Brand Package', description:'Example template — edit or archive before publishing.', serviceIds:['logo-system','business-card','letterhead'], pricingMode:'calculated', customPrice:0, published:false },
 ];
 
-export const projects = [
-  { id:'WS-0042', name:'Aurasol Identity Refresh', client:'Aurasol Diffusers', type:'Brand Identity', progress:74, deadline:new Date(Date.now()+3*864e5).toISOString(), status:'client-review', balance:30000, clientApproved:false, deliverablesComplete:false, blockedReason:'', manager:'Wisdom', team:['Wisdom','Ada'], next:'Review moodboard feedback' },
-  { id:'WS-0041', name:'Conference Campaign', client:'RevivalHub International', type:'Continuous Graphics', progress:86, deadline:new Date(Date.now()+1*864e5).toISOString(), status:'production', balance:0, clientApproved:false, deliverablesComplete:false, blockedReason:'Awaiting final minister photograph', manager:'Ada', team:['Ada','Wisdom'], next:'Resume countdown graphics' },
-  { id:'WS-0038', name:'The Main Dream Campaign', client:'TMD', type:'Campaign System', progress:96, deadline:new Date(Date.now()+5*864e5).toISOString(), status:'approved', balance:20000, clientApproved:true, deliverablesComplete:true, blockedReason:'', manager:'Wisdom', team:['Wisdom'], next:'Record balance and release finals' },
-];
+export const foundationSteps = [];
+export const standards = workflowTemplates;
+export const assets = services;
 
-export const workers = [
-  { id:'w1', name:'Wisdom', role:'Owner / Creative Director', active:4, done:18, total:23, overdue:1, status:'Reviewing brand direction' },
-  { id:'w2', name:'Ada', role:'Designer', active:3, done:12, total:15, overdue:0, status:'Working on conference campaign' },
-  { id:'w3', name:'Emmanuel', role:'Designer', active:2, done:5, total:12, overdue:3, status:'Preparing social kit' },
-];
+export const onboardingByRole = {
+  owner:[
+    ['command','Command Centre','See pending approvals, money, deadlines and project risks.'],
+    ['projects','Projects','Create work independently of packages, then attach services, tasks, contracts and moodboards.'],
+    ['team','Team & approvals','Approve new accounts, assign roles and manage worker profiles.'],
+    ['finance','Finance','Track contract value, invoices, payments and verification.'],
+    ['more','More','Services, templates, contracts, portfolio, Academy and Settings live here.'],
+  ],
+  worker:[
+    ['work','My Work','Only authorized assignments and projects appear here.'],
+    ['tasks','Tasks','Update progress, blockers and submissions from assigned tasks.'],
+    ['portfolio','Portfolio','Completed contributions can feed your private work history.'],
+  ],
+  client:[
+    ['project','My Projects','Follow approved progress and milestones.'],
+    ['reviews','Reviews','View protected previews and approve or request changes.'],
+    ['billing','Billing','See invoices, contract milestones and verified payments.'],
+  ],
+};

@@ -1,4 +1,4 @@
-const CACHE = 'studiodesk-v0.3.0';
+const CACHE = 'studiodesk-v0.4.0';
 const CORE = [
   './', './index.html', './styles.css', './app.js',
   './assets/studiodesk-mark.png', './manifest.webmanifest',
