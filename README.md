@@ -1,34 +1,44 @@
 # StudioDesk
 
-StudioDesk is Wiscode Studio's creative-operations system for projects, clients, workers, tasks, research/moodboards, protected reviews, contracts, finance, delivery and portfolio history.
+StudioDesk is the creative-operations workspace for Wiscode Studio / Wiscode Innovations Limited. It manages projects, clients, workers, creative workflows, moodboards, protected review, contracts, invoices, payments, delivery, past work and portfolio records in one connected system.
 
-## V0.4 acceptance rebuild
-The live V0.3 prototype proved Firebase connectivity and the visual direction, but acceptance testing exposed a workflow problem: too much of the app revolved around a branding Package Builder. V0.4 corrects that architecture.
+## Current build — V0.5 Identity & Operations Rebuild
 
-### Key model
-`Project` is the operating object. Services, package templates, contracts, invoices, moodboards, tasks and delivery are tools attached to a project when needed.
+V0.5 is an acceptance-stage rebuild focused on real studio operations rather than a branding-only package configurator.
 
-A project can start from:
-1. an already agreed external quote,
-2. the service catalogue,
-3. a reusable package template,
-4. a custom commercial contract.
+### Core changes
+- One identity can hold multiple roles and switch real workspaces: Client, Worker/Designer, Project Manager, Finance, Admin and Owner.
+- Approval activates an account; roles remain editable later so people can be promoted, demoted or given additional roles without creating another email account.
+- Client login identities are linked to client records by UID/email and linked projects are backfilled for portal visibility.
+- Workers/designers can operate assigned work: create projects/clients/tasks, moodboards, protected previews, draft contracts and draft invoices.
+- Finance/Admin/Owner handle sensitive finalization such as issuing invoices, verifying payments and finalizing commercial documents.
+- Draft invoices remain editable and private; only issued invoices become receivables/client-visible.
+- Project agreed/contract value is separate from invoice values and milestone billing.
+- Profile pictures can be chosen from the device and compressed into the user profile without Firebase Storage.
+- Password fields support visibility toggles; Firebase password reset remains available.
+- Space Grotesk is the brand typeface with stronger typographic hierarchy.
+- Dark mode uses a restrained liquid/organic motion system rather than a static heavy gradient.
+- Role-aware route guards keep sensitive administration pages out of the wrong workspace.
 
-### Roles
-Owner/Admin, Project Manager/Lead Designer, Designer/Worker, Finance and Client. New registrations are pending until approved by an Owner/Admin.
+## Infrastructure
+- Firebase project: `studiodesk-20dc6`
+- Firestore production database: `(default)` in `africa-south1`
+- Firebase Hosting: `studiodesk-20dc6.web.app`
+- Heavy creative files: Google Drive boundary; Firestore stores metadata/links
+- Payment gateway: deferred; V1 uses manual payment records and verification
 
-### Firebase
-- Project: `studiodesk-20dc6`
-- Firestore: `(default)` in `africa-south1`
-- Hosting: Firebase Hosting
-- Heavy files: Google Drive links/integration boundary
-
-### Deployment
-Publish the matching `firestore.rules` before testing the new self-registration/approval flows. Then deploy Hosting.
+## Deployment order
+When this build is committed to GitHub, deploy from Google Cloud Shell:
 
 ```bash
+cd ~/studiodesk
+git pull origin main
 firebase deploy --only firestore:rules
+firebase deploy --only firestore:indexes
 firebase deploy --only hosting
 ```
 
-Do not commit service-account keys, billing/card data, passwords, OAuth client secrets or trusted mail provider secrets.
+If Firestore reports that indexes are already present, that is fine. Test Owner, Worker, Client and Finance workspaces after deployment.
+
+## Security
+Never commit service-account keys, passwords, billing/card details, OAuth secrets or private API credentials. Firebase Web configuration is frontend project-identifying configuration; authorization is enforced through Firebase Authentication and Firestore Security Rules.

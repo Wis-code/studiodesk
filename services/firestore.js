@@ -2,6 +2,13 @@ import { getFirebaseServices, collections } from './firebase.js';
 import { ensureAnonymousSession } from './auth.js';
 import { services as starterServices, serviceCategories as starterCategories, workflowTemplates, packageTemplates as starterPackages } from '../data/seed.js';
 
+const normalizeRoles = profile => {
+  const roles = Array.isArray(profile?.roles) ? profile.roles.filter(Boolean) : [];
+  if (roles.length) return [...new Set(roles)];
+  const legacy = profile?.role;
+  return legacy && !['pending','rejected'].includes(legacy) ? [legacy] : [];
+};
+
 const withId = d => ({ id:d.id, ...d.data() });
 const stampValue = v => v?.toMillis?.() ?? (v?.seconds ? v.seconds*1000 : 0);
 const sortDesc = (a,b,key='updatedAt') => stampValue(b?.[key]) - stampValue(a?.[key]);
@@ -31,7 +38,7 @@ export async function createPendingProfile({name,email,requestedRole='worker',co
   await f.firestoreSdk.setDoc(ref,{
     displayName:name||user.displayName||email?.split('@')[0]||'New user',
     email:email||user.email||'', phone, company,
-    role:'pending', requestedRole, status:'pending',
+    role:'pending', roles:[], requestedRole, requestedRoles:[requestedRole], defaultWorkspace:requestedRole, status:'pending',
     profilePhotoUrl:user.photoURL||'', title:'',
     onboardingComplete:false, createdAt:f.firestoreSdk.serverTimestamp(), updatedAt:f.firestoreSdk.serverTimestamp(),
   });
@@ -47,7 +54,7 @@ export async function ensureGoogleProfile({requestedRole='client'}={}){
   if(snap.exists()) return withId(snap);
   await f.firestoreSdk.setDoc(ref,{
     displayName:user.displayName||user.email?.split('@')[0]||'New user', email:user.email||'', phone:'', company:'',
-    role:'pending', requestedRole, status:'pending', profilePhotoUrl:user.photoURL||'', title:'', onboardingComplete:false,
+    role:'pending', roles:[], requestedRole, requestedRoles:[requestedRole], defaultWorkspace:requestedRole, status:'pending', profilePhotoUrl:user.photoURL||'', title:'', onboardingComplete:false,
     createdAt:f.firestoreSdk.serverTimestamp(), updatedAt:f.firestoreSdk.serverTimestamp(),
   });
   return getCurrentUserProfile();
@@ -84,21 +91,63 @@ export async function subscribeOwnerWorkspace(cb){
 
 export async function subscribeRoleWorkspace(profile, cb){
   const f=await ctx(); const uid=f.auth.currentUser?.uid; if(!uid)return()=>{};
-  const state={projects:[],tasks:[],invoices:[],payments:[],contracts:[],moodboards:[],moodboardItems:[],previews:[],portfolio:[]};
+  const roles=normalizeRoles(profile);
+  const state={projects:[],clients:[],users:[],tasks:[],invoices:[],payments:[],contracts:[],moodboards:[],moodboardItems:[],previews:[],portfolio:[]};
   const unsubs=[]; const emit=()=>cb({...state});
-  const pq=f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.projects),f.firestoreSdk.where('accessUserIds','array-contains',uid),f.firestoreSdk.limit(150));
-  unsubs.push(f.firestoreSdk.onSnapshot(pq,s=>{state.projects=s.docs.map(withId).sort((a,b)=>sortDesc(a,b));emit();},()=>{}));
-  if(['worker','designer','lead_designer','project_manager'].includes(profile?.role)){
+  const listen=(q,key,sorter=(a,b)=>sortDesc(a,b))=>unsubs.push(f.firestoreSdk.onSnapshot(q,s=>{state[key]=s.docs.map(withId).sort(sorter);emit();},()=>{}));
+  const isFinance=roles.includes('finance');
+  let scopedUnsubs=[];
+  const resetScopedProjectResources=(ids=[])=>{
+    scopedUnsubs.forEach(u=>{try{u?.()}catch{}}); scopedUnsubs=[];
+    if(!ids.length || isFinance)return;
+    const workerScope=roles.some(r=>['worker','designer','lead_designer','project_manager'].includes(r));
+    const clientScope=roles.includes('client');
+    if(clientScope && !workerScope){
+      const accum={contracts:new Map(),previews:new Map(),moodboards:new Map()};
+      ids.slice(0,40).forEach(projectId=>{
+        const cq=f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.contracts),f.firestoreSdk.where('projectId','==',projectId),f.firestoreSdk.limit(20));
+        scopedUnsubs.push(f.firestoreSdk.onSnapshot(cq,snap=>{accum.contracts.set(projectId,snap.docs.map(withId));state.contracts=[...accum.contracts.values()].flat().sort((a,b)=>sortDesc(a,b));emit();},()=>{}));
+        for(const [key,col] of [['previews',collections.previews],['moodboards',collections.moodboards]]){
+          const q=f.firestoreSdk.query(f.firestoreSdk.collection(f.db,col),f.firestoreSdk.where('projectId','==',projectId),f.firestoreSdk.where('clientVisible','==',true),f.firestoreSdk.limit(50));
+          scopedUnsubs.push(f.firestoreSdk.onSnapshot(q,snap=>{accum[key].set(projectId,snap.docs.map(withId));state[key]=[...accum[key].values()].flat().sort((a,b)=>sortDesc(a,b));emit();},()=>{}));
+        }
+      });
+      return;
+    }
+    if(!workerScope)return;
+    const chunks=[];for(let i=0;i<ids.length;i+=30)chunks.push(ids.slice(i,i+30));
+    const specs=[['invoices',collections.invoices],['payments',collections.payments],['contracts',collections.contracts],['moodboards',collections.moodboards],['moodboardItems',collections.moodboardItems],['previews',collections.previews]];
+    for(const [key,col] of specs){
+      const bucket=new Map();
+      chunks.forEach((chunk,ci)=>{
+        const q=f.firestoreSdk.query(f.firestoreSdk.collection(f.db,col),f.firestoreSdk.where('projectId','in',chunk),f.firestoreSdk.limit(250));
+        const u=f.firestoreSdk.onSnapshot(q,snap=>{bucket.set(ci,snap.docs.map(withId));state[key]=[...bucket.values()].flat().sort((a,b)=>sortDesc(a,b));emit();},()=>{});scopedUnsubs.push(u);
+      });
+    }
+  };
+  if(isFinance){
+    listen(f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.projects),f.firestoreSdk.limit(200)),'projects');
+    listen(f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.clients),f.firestoreSdk.limit(250)),'clients');
+    listen(f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.invoices),f.firestoreSdk.limit(250)),'invoices');
+    listen(f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.payments),f.firestoreSdk.limit(250)),'payments');
+    listen(f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.contracts),f.firestoreSdk.limit(250)),'contracts');
+  }else{
+    const pq=f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.projects),f.firestoreSdk.where('accessUserIds','array-contains',uid),f.firestoreSdk.limit(150));
+    unsubs.push(f.firestoreSdk.onSnapshot(pq,snap=>{state.projects=snap.docs.map(withId).sort((a,b)=>sortDesc(a,b));resetScopedProjectResources(state.projects.map(p=>p.id));emit();},()=>{}));
+  }
+  if(roles.some(r=>['worker','designer','lead_designer','project_manager'].includes(r))){
     const tq=f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.tasks),f.firestoreSdk.where('assigneeIds','array-contains',uid),f.firestoreSdk.limit(250));
-    unsubs.push(f.firestoreSdk.onSnapshot(tq,s=>{state.tasks=s.docs.map(withId).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));emit();},()=>{}));
+    listen(tq,'tasks',(a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
+    listen(f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.clients),f.firestoreSdk.limit(250)),'clients');
+    listen(f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.users),f.firestoreSdk.limit(250)),'users');
   }
-  if(profile?.role==='client' && profile?.clientId){
-    const iq=f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.invoices),f.firestoreSdk.where('clientId','==',profile.clientId),f.firestoreSdk.limit(150));
-    unsubs.push(f.firestoreSdk.onSnapshot(iq,s=>{state.invoices=s.docs.map(withId).sort((a,b)=>sortDesc(a,b));emit();},()=>{}));
+  if(roles.includes('client') && profile?.clientId){
+    const iq=f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.invoices),f.firestoreSdk.where('clientId','==',profile.clientId),f.firestoreSdk.where('clientVisible','==',true),f.firestoreSdk.limit(150));
+    listen(iq,'invoices');
     const payq=f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.payments),f.firestoreSdk.where('clientId','==',profile.clientId),f.firestoreSdk.limit(150));
-    unsubs.push(f.firestoreSdk.onSnapshot(payq,s=>{state.payments=s.docs.map(withId).sort((a,b)=>sortDesc(a,b));emit();},()=>{}));
+    listen(payq,'payments');
   }
-  return ()=>unsubs.forEach(u=>{try{u?.()}catch{}});
+  return ()=>{unsubs.forEach(u=>{try{u?.()}catch{}});scopedUnsubs.forEach(u=>{try{u?.()}catch{}});};
 }
 
 export async function saveWorkflowTemplate(id,data){const f=await ctx();const r=id?f.firestoreSdk.doc(f.db,collections.standards,id):f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.standards));await f.firestoreSdk.setDoc(r,{...clean(data),active:true,updatedAt:f.firestoreSdk.serverTimestamp(),...(id?{}:{createdAt:f.firestoreSdk.serverTimestamp(),version:1})},{merge:Boolean(id)});return r.id;}
@@ -141,7 +190,7 @@ export async function deleteService(id){const f=await ctx();await f.firestoreSdk
 export async function savePackageTemplate(id,data){const f=await ctx();const r=id?f.firestoreSdk.doc(f.db,collections.packageTemplates,id):f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.packageTemplates));await f.firestoreSdk.setDoc(r,{...clean(data),updatedAt:f.firestoreSdk.serverTimestamp(),...(id?{}:{createdAt:f.firestoreSdk.serverTimestamp()})},{merge:Boolean(id)});return r.id;}
 export async function archivePackageTemplate(id){const f=await ctx();await f.firestoreSdk.setDoc(f.firestoreSdk.doc(f.db,collections.packageTemplates,id),{archived:true,updatedAt:f.firestoreSdk.serverTimestamp()},{merge:true});}
 
-export async function createClient(data){const f=await ctx();const r=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.clients));await f.firestoreSdk.setDoc(r,{...clean(data),userIds:data.userIds||[],status:'active',createdAt:f.firestoreSdk.serverTimestamp(),updatedAt:f.firestoreSdk.serverTimestamp()});return r.id;}
+export async function createClient(data){const f=await ctx();const r=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.clients));const email=String(data.email||'').trim().toLowerCase();await f.firestoreSdk.setDoc(r,{...clean(data),email,userIds:data.userIds||[],status:'active',createdAt:f.firestoreSdk.serverTimestamp(),updatedAt:f.firestoreSdk.serverTimestamp()});return r.id;}
 
 function buildTaskRows({workflow=[],projectId,uid,f}){
   return workflow.map((step,index)=>({
@@ -154,10 +203,14 @@ function buildTaskRows({workflow=[],projectId,uid,f}){
 export async function createProject({project,client,workflow=[]}){
   const f=await ctx(); const uid=f.auth.currentUser?.uid;if(!uid)throw new Error('Sign in first.');
   const batch=f.firestoreSdk.writeBatch(f.db); const now=f.firestoreSdk.serverTimestamp();
-  let clientId=project.clientId||''; let clientName=project.clientName||client?.name||'';
-  if(!clientId && client?.name){const cr=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.clients));clientId=cr.id;batch.set(cr,{name:client.name,email:client.email||'',phone:client.phone||'',company:client.company||client.name,userIds:[],status:'active',createdAt:now,updatedAt:now});}
+  let clientId=project.clientId||''; let clientName=project.clientName||client?.name||''; let clientUserIds=[];
+  if(clientId){
+    const cs=await f.firestoreSdk.getDoc(f.firestoreSdk.doc(f.db,collections.clients,clientId));
+    if(cs.exists()){const cd=cs.data();clientName=clientName||cd.name||'';clientUserIds=Array.isArray(cd.userIds)?cd.userIds:[];}
+  }
+  if(!clientId && client?.name){const cr=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.clients));clientId=cr.id;batch.set(cr,{name:client.name,email:String(client.email||'').trim().toLowerCase(),phone:client.phone||'',company:client.company||client.name,userIds:[],status:'active',createdAt:now,updatedAt:now});}
   const pr=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.projects));
-  batch.set(pr,{...clean(project),clientId,clientName,accessUserIds:[uid],managementUserIds:[uid],workerIds:[],clientUserIds:[],progress:0,status:'active',health:'healthy',archived:false,releaseState:'locked',createdBy:uid,createdAt:now,updatedAt:now});
+  batch.set(pr,{...clean(project),clientId,clientName,accessUserIds:[...new Set([uid,...clientUserIds])],managementUserIds:[uid],workerIds:[],clientUserIds,progress:0,status:'active',health:'healthy',archived:false,releaseState:'locked',createdBy:uid,createdAt:now,updatedAt:now});
   for(const t of buildTaskRows({workflow,projectId:pr.id,uid,f})){const tr=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.tasks));batch.set(tr,t);}
   const ar=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.activity));batch.set(ar,{projectId:pr.id,type:'project_created',message:'Project created.',actorId:uid,createdAt:now});
   await batch.commit(); return {projectId:pr.id,clientId};
@@ -170,7 +223,8 @@ export async function createTask(data){const f=await ctx();const r=f.firestoreSd
 export async function updateTask(id,patch){const f=await ctx();await f.firestoreSdk.setDoc(f.firestoreSdk.doc(f.db,collections.tasks,id),{...clean(patch),updatedAt:f.firestoreSdk.serverTimestamp()},{merge:true});}
 
 export async function updateUserProfile(uid,patch){const f=await ctx();await f.firestoreSdk.setDoc(f.firestoreSdk.doc(f.db,collections.users,uid),{...clean(patch),updatedAt:f.firestoreSdk.serverTimestamp()},{merge:true});}
-export async function approveUser(uid,{role,title=''}){return updateUserProfile(uid,{role,status:'active',title,approvedAt:new Date().toISOString()});}
+export async function approveUser(uid,{roles=[],defaultWorkspace='',title='',status='active'}={}){const unique=[...new Set((roles||[]).filter(Boolean))];const legacy=unique[0]||'worker';return updateUserProfile(uid,{roles:unique,role:legacy,defaultWorkspace:defaultWorkspace||legacy,status,title,approvedAt:new Date().toISOString()});}
+export async function updateAccountAccess(uid,{roles=[],defaultWorkspace='',status='active',title=''}={}){const unique=[...new Set((roles||[]).filter(Boolean))];const legacy=unique[0]||'worker';return updateUserProfile(uid,{roles:unique,role:legacy,defaultWorkspace:defaultWorkspace||legacy,status,title,accessUpdatedAt:new Date().toISOString()});}
 export async function rejectUser(uid){return updateUserProfile(uid,{status:'rejected'});}
 
 export async function linkClientUser(uid,clientId){
@@ -185,6 +239,20 @@ export async function linkClientUser(uid,clientId){
   await batch.commit();
 }
 
+export async function ensureClientLinkForUser(user,preferredClientId=''){
+  const f=await ctx(); let clientId=preferredClientId||user?.clientId||''; const email=String(user?.email||'').trim().toLowerCase();
+  if(!clientId && email){
+    const q=f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.clients),f.firestoreSdk.where('email','==',email),f.firestoreSdk.limit(5));
+    let snap=await f.firestoreSdk.getDocs(q); if(!snap.empty) clientId=snap.docs[0].id;
+    if(!clientId && String(user?.email||'')!==email){const q2=f.firestoreSdk.query(f.firestoreSdk.collection(f.db,collections.clients),f.firestoreSdk.where('email','==',String(user.email)),f.firestoreSdk.limit(5));snap=await f.firestoreSdk.getDocs(q2);if(!snap.empty)clientId=snap.docs[0].id;}
+  }
+  if(!clientId){
+    const r=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.clients)); clientId=r.id;
+    await f.firestoreSdk.setDoc(r,{name:user?.displayName||'Client',email,phone:user?.phone||'',company:user?.company||user?.displayName||'Client',userIds:[],status:'active',createdAt:f.firestoreSdk.serverTimestamp(),updatedAt:f.firestoreSdk.serverTimestamp()});
+  }
+  await linkClientUser(user.id||user.uid,clientId); return clientId;
+}
+
 export async function createWorkerInvite(data){const f=await ctx();const r=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.workerInvites));await f.firestoreSdk.setDoc(r,{...clean(data),status:'pending',createdAt:f.firestoreSdk.serverTimestamp(),updatedAt:f.firestoreSdk.serverTimestamp()});return r.id;}
 
 export async function createContract(data){const f=await ctx();const r=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.contracts));await f.firestoreSdk.setDoc(r,{...clean(data),status:data.status||'draft',milestones:data.milestones||[],createdAt:f.firestoreSdk.serverTimestamp(),updatedAt:f.firestoreSdk.serverTimestamp()});return r.id;}
@@ -192,8 +260,11 @@ export async function updateContract(id,patch){const f=await ctx();await f.fires
 
 export async function createInvoice(data){
   const f=await ctx(); const r=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.invoices));const invoiceNo=`WSC-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;const amount=Number(data.amount||0);
-  await f.firestoreSdk.setDoc(r,{...clean(data),invoiceNo,amount,paidAmount:0,balance:amount,status:'unpaid',createdAt:f.firestoreSdk.serverTimestamp(),updatedAt:f.firestoreSdk.serverTimestamp()});return {id:r.id,invoiceNo};
+  await f.firestoreSdk.setDoc(r,{...clean(data),invoiceNo,amount,paidAmount:0,balance:amount,status:'draft',clientVisible:false,createdBy:f.auth.currentUser?.uid||'',createdAt:f.firestoreSdk.serverTimestamp(),updatedAt:f.firestoreSdk.serverTimestamp()});return {id:r.id,invoiceNo};
 }
+export async function updateInvoice(id,patch){const f=await ctx();const ref=f.firestoreSdk.doc(f.db,collections.invoices,id);const snap=await f.firestoreSdk.getDoc(ref);if(!snap.exists())throw new Error('Invoice not found.');const current=snap.data();if(current.status!=='draft')throw new Error('Only draft invoices can be edited.');const amount=patch.amount===undefined?Number(current.amount||0):Number(patch.amount||0);await f.firestoreSdk.setDoc(ref,{...clean(patch),amount,balance:Math.max(0,amount-Number(current.paidAmount||0)),updatedAt:f.firestoreSdk.serverTimestamp()},{merge:true});}
+export async function issueInvoice(id){const f=await ctx();await f.firestoreSdk.setDoc(f.firestoreSdk.doc(f.db,collections.invoices,id),{status:'sent',clientVisible:true,issuedAt:f.firestoreSdk.serverTimestamp(),updatedAt:f.firestoreSdk.serverTimestamp()},{merge:true});}
+export async function voidInvoice(id){const f=await ctx();await f.firestoreSdk.setDoc(f.firestoreSdk.doc(f.db,collections.invoices,id),{status:'void',clientVisible:false,voidedAt:f.firestoreSdk.serverTimestamp(),updatedAt:f.firestoreSdk.serverTimestamp()},{merge:true});}
 
 export async function submitPayment(data){
   const f=await ctx();const r=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.payments));await f.firestoreSdk.setDoc(r,{...clean(data),amount:Number(data.amount||0),status:'pending_verification',submittedBy:f.auth.currentUser?.uid||'',createdAt:f.firestoreSdk.serverTimestamp(),updatedAt:f.firestoreSdk.serverTimestamp()});return r.id;
@@ -215,7 +286,7 @@ export async function createPreview(data){const f=await ctx();const r=f.firestor
 export async function savePortfolioItem(data){const f=await ctx();const r=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.portfolio));await f.firestoreSdk.setDoc(r,{...clean(data),createdAt:f.firestoreSdk.serverTimestamp(),updatedAt:f.firestoreSdk.serverTimestamp()});return r.id;}
 
 export async function submitPublicPackageRequest(data){
-  const f=await ctx();const anon=await ensureAnonymousSession();const r=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.packageRequests));await f.firestoreSdk.setDoc(r,{...clean(data),createdBy:anon.uid,status:'new',createdAt:f.firestoreSdk.serverTimestamp()});return r.id;
+  const f=await ctx();const user=f.auth.currentUser&&!f.auth.currentUser.isAnonymous?f.auth.currentUser:await ensureAnonymousSession();const r=f.firestoreSdk.doc(f.firestoreSdk.collection(f.db,collections.packageRequests));await f.firestoreSdk.setDoc(r,{...clean(data),createdBy:user.uid,status:'new',createdAt:f.firestoreSdk.serverTimestamp()});return r.id;
 }
 
 export async function markOnboardingComplete(){const f=await ctx();const uid=f.auth.currentUser?.uid;if(uid)await updateUserProfile(uid,{onboardingComplete:true});}
