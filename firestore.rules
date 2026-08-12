@@ -33,6 +33,7 @@ service cloud.firestore {
       );
     }
     function anonymous(){ return signedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous'; }
+    function changedOnly(keys){ return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
 
     match /users/{uid} {
       allow read: if signedIn() && (internal() || request.auth.uid == uid);
@@ -43,7 +44,7 @@ service cloud.firestore {
         && request.resource.data.roles.size() == 0
         && request.resource.data.keys().hasOnly([
           'displayName','email','phone','company','role','roles','requestedRole','requestedRoles','defaultWorkspace','status','profilePhotoUrl','title',
-          'onboardingComplete','createdAt','updatedAt'
+          'onboardingComplete','onboardingEligible','createdAt','updatedAt'
         ]);
       allow update: if ownerAdmin()
         || (signedIn() && request.auth.uid == uid
@@ -54,7 +55,7 @@ service cloud.firestore {
             || (resource.data.keys().hasAny(['roles']) && request.resource.data.roles == resource.data.roles)
           )
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'displayName','phone','company','profilePhotoUrl','title','onboardingComplete','defaultWorkspace','updatedAt'
+            'displayName','phone','company','profilePhotoUrl','title','onboardingComplete','onboardingEligible','defaultWorkspace','updatedAt'
           ])
           && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['profilePhotoUrl'])
               || request.resource.data.profilePhotoUrl.size() < 300000)
@@ -69,7 +70,8 @@ service cloud.firestore {
     match /clients/{clientId} {
       allow read: if internal() || (active() && request.auth.uid in resource.data.userIds);
       allow create: if ownerAdmin() || workerOperator();
-      allow update: if ownerAdmin() || manager();
+      allow update: if ownerAdmin() || manager()
+        || (workerOperator() && resource.data.createdBy == request.auth.uid);
       allow delete: if owner();
     }
 
@@ -79,7 +81,11 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.auth.uid in request.resource.data.accessUserIds
         && request.auth.uid in request.resource.data.managementUserIds;
-      allow update: if projectOperate(projectId);
+      allow update: if projectOperate(projectId)
+        || (finance()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'contractValue','currency','updatedAt'
+          ]));
       allow delete: if owner();
     }
 
@@ -115,14 +121,39 @@ service cloud.firestore {
     }
 
     match /contracts/{id} {
-      allow read: if finance() || projectAccess(resource.data.projectId);
+      allow read: if finance()
+        || (internal() && projectAccess(resource.data.projectId))
+        || (clientRole() && projectAccess(resource.data.projectId) && resource.data.clientVisible == true);
       allow create: if ownerAdmin() || finance()
-        || (projectOperate(request.resource.data.projectId) && request.resource.data.status == 'draft');
-      allow update: if ownerAdmin() || finance()
-        || (projectOperate(resource.data.projectId)
+        || (projectOperate(request.resource.data.projectId)
+          && request.resource.data.status == 'draft'
+          && request.resource.data.clientVisible == false);
+      allow update: if (
+          (ownerAdmin() || finance()) && (
+            (
+              resource.data.status == 'draft'
+              && request.resource.data.status in ['draft','sent','accepted','signed']
+            )
+            || (
+              resource.data.status != 'draft'
+              && (
+                changedOnly(['archived','archivedAt','updatedAt'])
+                || (
+                  request.resource.data.status == 'void'
+                  && request.resource.data.clientVisible == false
+                  && changedOnly(['status','clientVisible','voidReason','voidedAt','updatedAt'])
+                )
+              )
+            )
+          )
+        )
+        || (
+          projectOperate(resource.data.projectId)
           && resource.data.status == 'draft'
-          && request.resource.data.status == 'draft');
-      allow delete: if owner() || (projectOperate(resource.data.projectId) && resource.data.status == 'draft');
+          && request.resource.data.status == 'draft'
+        );
+      allow delete: if resource.data.status == 'draft'
+        && (ownerAdmin() || finance() || projectOperate(resource.data.projectId));
     }
 
     match /invoices/{id} {
@@ -132,13 +163,52 @@ service cloud.firestore {
         || (projectOperate(request.resource.data.projectId)
           && request.resource.data.status == 'draft'
           && request.resource.data.clientVisible == false);
-      allow update: if ownerAdmin() || finance()
-        || (projectOperate(resource.data.projectId)
+      allow update: if (
+          (ownerAdmin() || finance()) && (
+            (
+              resource.data.status == 'draft'
+              && (
+                request.resource.data.status == 'draft'
+                || (
+                  request.resource.data.status == 'sent'
+                  && request.resource.data.clientVisible == true
+                  && changedOnly(['status','clientVisible','issuedAt','updatedAt'])
+                )
+              )
+            )
+            || (
+              resource.data.status in ['sent','issued']
+              && resource.data.paidAmount == 0
+              && (
+                (
+                  request.resource.data.status == 'void'
+                  && request.resource.data.clientVisible == false
+                  && changedOnly(['status','clientVisible','voidReason','voidedAt','updatedAt'])
+                )
+                || (
+                  request.resource.data.status == 'superseded'
+                  && request.resource.data.clientVisible == false
+                  && changedOnly(['status','clientVisible','supersededBy','supersededAt','updatedAt'])
+                )
+              )
+            )
+            || (
+              resource.data.status in ['sent','issued','partially_paid']
+              && request.resource.data.paidAmount >= resource.data.paidAmount
+              && request.resource.data.balance <= resource.data.balance
+              && request.resource.data.status in ['partially_paid','paid']
+              && changedOnly(['paidAmount','balance','status','updatedAt'])
+            )
+          )
+        )
+        || (
+          projectOperate(resource.data.projectId)
           && resource.data.status == 'draft'
           && request.resource.data.status == 'draft'
-          && request.resource.data.clientVisible == false);
-      allow delete: if owner() || finance()
-        || (projectOperate(resource.data.projectId) && resource.data.status == 'draft');
+          && request.resource.data.clientVisible == false
+        );
+      allow delete: if resource.data.status == 'draft'
+        && (ownerAdmin() || finance() || projectOperate(resource.data.projectId));
     }
 
     match /payments/{id} {
@@ -146,15 +216,28 @@ service cloud.firestore {
       allow create: if active() && projectAccess(request.resource.data.projectId)
         && request.resource.data.status == 'pending_verification'
         && request.resource.data.submittedBy == request.auth.uid;
-      allow update: if ownerAdmin() || finance();
+      allow update: if (ownerAdmin() || finance())
+        && resource.data.status == 'pending_verification'
+        && request.resource.data.status == 'verified'
+        && changedOnly(['status','verifiedBy','verifiedAt','updatedAt']);
       allow delete: if owner();
     }
 
     match /expenses/{id} {
       allow read: if ownerAdmin() || finance();
-      allow create: if ownerAdmin() || finance() || workerOperator();
-      allow update: if ownerAdmin() || finance();
-      allow delete: if owner();
+      allow create: if ownerAdmin() || finance();
+      allow update: if (ownerAdmin() || finance()) && (
+        (
+          resource.data.status == 'draft'
+          && request.resource.data.status in ['draft','recorded']
+        )
+        || (
+          resource.data.status == 'recorded'
+          && request.resource.data.status == 'void'
+          && changedOnly(['status','voidReason','voidedBy','voidedAt','updatedAt'])
+        )
+      );
+      allow delete: if (ownerAdmin() || finance()) && resource.data.status == 'draft';
     }
 
     match /moodboards/{id} {
@@ -165,8 +248,11 @@ service cloud.firestore {
         || (internal() && projectAccess(resource.data.projectId));
     }
     match /moodboardItems/{id} {
-      allow read: if projectAccess(resource.data.projectId);
-      allow create: if projectAccess(request.resource.data.projectId) && internal();
+      allow read: if projectAccess(resource.data.projectId)
+        && (internal() || resource.data.clientVisible == true);
+      allow create: if projectAccess(request.resource.data.projectId)
+        && internal()
+        && request.resource.data.clientVisible is bool;
       allow update, delete: if projectOperate(resource.data.projectId)
         || (internal() && projectAccess(resource.data.projectId));
     }
@@ -174,7 +260,8 @@ service cloud.firestore {
       allow read: if projectAccess(resource.data.projectId)
         && (internal() || resource.data.clientVisible == true);
       allow create, update: if internal() && projectAccess(request.resource.data.projectId);
-      allow delete: if ownerAdmin();
+      allow delete: if ownerAdmin()
+        || (workerOperator() && projectAccess(resource.data.projectId));
     }
     match /reviews/{id} {
       allow read: if projectAccess(resource.data.projectId);
@@ -191,7 +278,8 @@ service cloud.firestore {
     match /activity/{id} {
       allow read: if projectAccess(resource.data.projectId);
       allow create: if active() && internal() && request.resource.data.actorId == request.auth.uid;
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if owner();
     }
     match /notifications/{id} {
       allow read: if active() && request.auth.uid == resource.data.userId;

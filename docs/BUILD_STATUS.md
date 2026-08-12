@@ -1,28 +1,26 @@
-# StudioDesk V1 build status
+# StudioDesk V0.6 build status
 
-## Foundation implemented
-- Firebase Web app config
-- Authentication integration
-- Owner role bootstrap compatibility
-- Live Firestore adapters
-- Public configurator architecture
-- Standards catalogue and live pricing
-- Diagnostic workflow/task generation
-- Project/client creation
-- Manual finance foundation
-- Role-aware owner/worker/client shell
-- Past Work architecture
-- Academy/tutorial shell
-- Premium dark UI with selective white/light surfaces
+## Architecture pass implemented
+- Project CRUD, archive/restore, Owner-safe deletion and reversible team assignment
+- Multi-assignee task CRUD including block/complete/reopen/archive/restore
+- Client edit/archive lifecycle and client-login linking
+- Multi-role accounts, workspace switching, suspend/reactivate and worker-only ID cards
+- Live signed-in profile synchronization and immediate profile-photo refresh
+- Draft → issued → partial/paid + revise/void invoice lifecycle
+- Transactional payment verification against current invoice balance
+- Draft → recorded → void expense lifecycle
+- Draft/finalized contract history protection
+- Moodboard/reference edit/remove/reorder/visibility lifecycle
+- Preview revise/delete/visibility lifecycle
+- Service/category/workflow/package safe CRUD and archive/duplicate controls
+- Owner test-data cleanup
+- Responsive phone card/sheet layouts
+- V0.6 liquid depth, stronger typography and animated controls
+- One-time registration orientation; no Academy/replay section
 
-## Next implementation tranche
-1. Worker self-invite and onboarding.
-2. Full project detail page with stages, dependencies and live progress calculation.
-3. Internal review workspace with annotation/comment metadata.
-4. Protected preview generator and Drive-backed preview references.
-5. Client terms acceptance gate and client-specific portal links.
-6. Invoice/receipt PDF generator with CAC/legal business profile.
-7. Email adapter for portal invitations, review alerts, invoices and final delivery notifications.
-8. Google Drive OAuth/folder creation and final delivery package linking.
-9. Portfolio contribution permissions and alumni-safe portfolio access.
-10. App Check and final production security testing.
+## Still external / integration-dependent
+- Automatic transactional email delivery
+- Payment gateway settlement
+- Full Google Drive OAuth/folder automation
+- Server-side PDF rendering
+- App Check rollout / production security monitoring

@@ -6,7 +6,7 @@
 @media print{body{background:#fff!important;color:#111!important}.sidebar,.topbar,.mobile-nav,.modal-close,.project-tabs,.button-row,.primary-button,.glass-button,.dark-button,.secondary-button,.danger-button{display:none!important}.modal-layer{position:static!important;background:#fff!important;padding:0!important}.modal-card,.project-detail{box-shadow:none!important;border:0!important;background:#fff!important;color:#111!important}.id-card{max-width:700px;margin:40px auto;color:#fff!important}.moodboard-card{background:#fff!important;color:#111!important;border:0!important}.mood-grid figure{break-inside:avoid;background:#f5f5f5!important;color:#111!important}.mood-grid figcaption small{color:#555!important}.project-detail{min-height:0!important}.project-tab-content{padding:0!important}}
 .workflow-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.workflow-card{padding:22px;border-radius:22px;background:#1a2635;border:1px solid var(--line)}.workflow-card h3{font-size:24px;font-weight:500;margin:18px 0 6px}.workflow-card p{color:var(--muted)}.workflow-card ol{padding-left:20px;color:#aeb8c6;line-height:1.8;min-height:150px}.workflow-card button{border:1px solid var(--line);background:rgba(255,255,255,.04);color:#fff;border-radius:10px;padding:9px 11px}@media(max-width:1050px){.workflow-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:760px){.workflow-grid{grid-template-columns:1fr}}
 
-/* StudioDesk V0.5 — liquid workspace refresh */
+/* StudioDesk base shell — extended by the V0.6 liquid operations pass below */
 :root{--navy:#162635;--navy-2:#07131d;--navy-3:#0d1c28;--panel:rgba(18,34,48,.78);--panel-2:rgba(30,50,67,.72);--white:#fbfdff;--muted:#9fb0c0;--line:rgba(187,231,239,.11);--shadow:0 24px 80px rgba(0,8,18,.30)}
 html{background:#07131d}body{position:relative;background:#07131d;color:#f8fbff;overflow-x:hidden;letter-spacing:-.012em}
 body::before,body::after{content:"";position:fixed;pointer-events:none;z-index:0;will-change:transform,border-radius;background-repeat:no-repeat}
@@ -36,3 +36,185 @@ input,select,textarea{background:rgba(255,255,255,.045)!important;border-color:r
 @media(max-width:760px){body::before{width:115vw;height:115vw;left:-55vw;top:-30vw;opacity:.75}body::after{width:120vw;height:120vw;right:-65vw;bottom:-35vw}.topbar{background:rgba(7,19,29,.86)}.role-check-grid{grid-template-columns:1fr}.approval-actions.wide{grid-template-columns:1fr}.profile-photo-editor{grid-template-columns:78px 1fr}.profile-photo-preview{width:78px;height:78px;border-radius:20px}.invoice-actions{justify-content:flex-start}}
 @media(prefers-reduced-motion:reduce){body::before,body::after,.command-hero::before{animation:none!important}.primary-button,.project-card{transition:none!important}}
 .workspace-choice-stage{min-height:100vh;display:grid;place-items:center;padding:28px;position:relative;z-index:2}.workspace-choice-card{width:min(760px,100%);padding:36px;border:1px solid var(--line);border-radius:30px;background:rgba(12,29,42,.90);backdrop-filter:blur(28px) saturate(130%);box-shadow:var(--shadow)}.workspace-choice-card>.brand-mark{width:62px;margin-bottom:20px}.workspace-choice-card h1{font-size:clamp(38px,6vw,64px);line-height:.96;letter-spacing:-.05em;font-weight:650;margin:12px 0 15px}.workspace-choice-card>p{max-width:650px;color:var(--muted);line-height:1.65}.workspace-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:24px 0}.workspace-choice-grid button{display:grid;gap:7px;text-align:left;padding:20px;border-radius:18px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:#fff}.workspace-choice-grid button:hover{border-color:rgba(102,254,203,.28);background:rgba(102,254,203,.06)}.workspace-choice-grid strong{font-size:21px}.workspace-choice-grid small{color:var(--muted);line-height:1.45}.workspace-choice-grid span{color:var(--mint);font-size:12px;font-weight:700;margin-top:8px}@media(max-width:760px){.workspace-choice-stage{padding:14px;align-items:end}.workspace-choice-card{padding:26px 20px;border-radius:28px 28px 0 0}.workspace-choice-grid{grid-template-columns:1fr}.workspace-choice-card h1{font-size:43px}}
+
+/* ==========================================================
+   StudioDesk V0.6 — Liquid Bold UI + operational responsive pass
+   ========================================================== */
+:root{
+  --liquid-glow:rgba(102,254,203,.20);
+  --liquid-blue:rgba(121,217,255,.16);
+  --surface-deep:rgba(8,22,33,.84);
+  --surface-float:rgba(18,38,52,.72);
+  --surface-soft:rgba(255,255,255,.045);
+  --ring:0 0 0 3px rgba(102,254,203,.14);
+}
+
+/* Liquid atmosphere: motion lives behind the work, not on top of it. */
+body::before{animation-duration:28s;filter:blur(54px);opacity:.82}
+body::after{animation-duration:34s;filter:blur(62px);opacity:.72}
+.page{position:relative}
+.page::before{
+  content:"";position:fixed;z-index:-1;pointer-events:none;
+  width:42vw;height:22vw;min-width:420px;min-height:220px;
+  left:38vw;top:31vh;border-radius:58% 42% 66% 34%/42% 62% 38% 58%;
+  background:radial-gradient(ellipse at center,rgba(102,254,203,.055),rgba(121,217,255,.025) 48%,transparent 72%);
+  filter:blur(26px);animation:midWater 31s ease-in-out infinite alternate;
+}
+@keyframes midWater{
+  0%{transform:translate3d(-8%,-8%,0) rotate(-4deg) scale(.92);border-radius:58% 42% 66% 34%/42% 62% 38% 58%}
+  50%{transform:translate3d(13%,8%,0) rotate(7deg) scale(1.08);border-radius:38% 62% 43% 57%/61% 39% 66% 34%}
+  100%{transform:translate3d(-2%,18%,0) rotate(-1deg) scale(.98);border-radius:67% 33% 55% 45%/35% 55% 45% 65%}
+}
+
+/* Bold surfaces with a faint liquid edge. */
+.panel,.metric-card,.project-card,.client-card,.worker-card,.service-admin-card,.package-card,.workflow-card,.contract-grid article,.moodboard-card,.release-card{
+  position:relative;isolation:isolate;overflow:hidden;
+  box-shadow:0 18px 54px rgba(0,8,17,.18),inset 0 1px 0 rgba(255,255,255,.025);
+}
+.panel::before,.metric-card::before,.project-card::before,.client-card::before,.service-admin-card::before,.package-card::before,.workflow-card::before,.contract-grid article::before,.moodboard-card::before{
+  content:"";position:absolute;z-index:-1;pointer-events:none;width:180px;height:120px;right:-70px;top:-72px;
+  border-radius:60% 40% 54% 46%;background:radial-gradient(circle at 40% 45%,rgba(102,254,203,.07),transparent 70%);
+  transform:rotate(-8deg);transition:transform .55s ease,opacity .55s ease;opacity:.75;
+}
+.project-card:hover::before,.client-card:hover::before,.service-admin-card:hover::before,.package-card:hover::before{transform:translate(-16px,16px) rotate(8deg) scale(1.12);opacity:1}
+.project-card,.client-card,.service-admin-card,.package-card,.workflow-card,.contract-grid article{transition:transform .22s cubic-bezier(.2,.7,.2,1),border-color .22s ease,box-shadow .22s ease}
+.project-card:hover,.client-card:hover,.service-admin-card:hover,.package-card:hover,.workflow-card:hover,.contract-grid article:hover{transform:translateY(-3px);border-color:rgba(102,254,203,.20)!important;box-shadow:0 23px 62px rgba(0,8,17,.24)}
+.archived-card{opacity:.62;filter:saturate(.7)}
+
+/* Animated controls. Every primary action should feel alive, not noisy. */
+.primary-button,.secondary-button,.glass-button,.dark-button,.danger-button,.google-button,.nav-login,
+.panel-head button,.card-actions button,.package-foot button,.invoice-row button,.worker-card button,.mood-head button,.project-head-actions button,
+.quick-grid button,.attention-list>button,.related-row,.more-grid button,.workspace-choice-grid button,.project-tabs button,.sidebar nav button,.sidebar-extra button{
+  position:relative;overflow:hidden;isolation:isolate;
+  transition:transform .18s cubic-bezier(.2,.75,.2,1),box-shadow .22s ease,border-color .22s ease,background .22s ease,color .22s ease;
+}
+.primary-button::before,.secondary-button::before,.glass-button::before,.dark-button::before,.danger-button::before,.google-button::before,
+.panel-head button::before,.card-actions button::before,.invoice-row button::before,.quick-grid button::before,.more-grid button::before,.workspace-choice-grid button::before{
+  content:"";position:absolute;z-index:-1;inset:-70% -30%;pointer-events:none;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.20) 48%,transparent 61%);
+  transform:translateX(-72%) rotate(7deg);transition:transform .55s cubic-bezier(.2,.75,.2,1);
+}
+.primary-button:hover::before,.secondary-button:hover::before,.glass-button:hover::before,.dark-button:hover::before,.danger-button:hover::before,.google-button:hover::before,
+.panel-head button:hover::before,.card-actions button:hover::before,.invoice-row button:hover::before,.quick-grid button:hover::before,.more-grid button:hover::before,.workspace-choice-grid button:hover::before{transform:translateX(72%) rotate(7deg)}
+.primary-button:hover,.secondary-button:hover,.glass-button:hover,.dark-button:hover,.danger-button:hover,.google-button:hover,
+.panel-head button:hover,.card-actions button:hover,.invoice-row button:hover,.quick-grid button:hover,.more-grid button:hover,.workspace-choice-grid button:hover{transform:translateY(-2px)}
+.primary-button:active,.secondary-button:active,.glass-button:active,.dark-button:active,.danger-button:active,.google-button:active,
+.panel-head button:active,.card-actions button:active,.invoice-row button:active,.quick-grid button:active,.more-grid button:active,.workspace-choice-grid button:active,.project-tabs button:active{transform:translateY(0) scale(.965)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box-shadow:var(--ring);border-color:rgba(102,254,203,.48)!important}
+button:disabled{cursor:not-allowed;opacity:.48;transform:none!important}
+button:disabled::before{display:none}
+.primary-button.liquid-action{box-shadow:0 12px 38px rgba(102,254,203,.16),inset 0 1px 0 rgba(255,255,255,.32);animation:liquidButtonBreath 3.8s ease-in-out infinite}
+@keyframes liquidButtonBreath{0%,100%{box-shadow:0 12px 38px rgba(102,254,203,.14),0 0 0 0 rgba(102,254,203,0)}50%{box-shadow:0 16px 46px rgba(102,254,203,.23),0 0 0 5px rgba(102,254,203,.035)}}
+.sidebar nav button.active{box-shadow:inset 0 0 0 1px rgba(102,254,203,.08)}
+.sidebar nav button.active::after{content:"";position:absolute;left:5px;top:24%;bottom:24%;width:3px;border-radius:99px;background:var(--mint);box-shadow:0 0 16px rgba(102,254,203,.45)}
+
+/* Stronger type hierarchy without turning every label into a headline. */
+.page-heading h2{font-size:clamp(38px,4.6vw,66px);font-weight:700;letter-spacing:-.058em}
+.command-hero h2{font-weight:700}.panel-head h3{font-weight:650}.metric-card strong{letter-spacing:-.04em}
+.muted-copy,.small-copy{color:var(--muted);line-height:1.6}
+.history-label{color:var(--muted);font-size:11px;line-height:1.35}
+
+/* Assignment / task lifecycle controls */
+.assignment-picker{display:grid;gap:12px;padding:15px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.025)}
+.assignment-picker>span,.locked-context>span{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.worker-checkbox-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.worker-checkbox-grid label{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.03);cursor:pointer}
+.worker-checkbox-grid label:has(input:checked){border-color:rgba(102,254,203,.28);background:rgba(102,254,203,.065)}
+.worker-checkbox-grid input{width:17px;height:17px;margin-top:2px;accent-color:var(--mint)}
+.worker-checkbox-grid span{display:grid;font-weight:600}.worker-checkbox-grid small{color:var(--muted);font-weight:400}
+.locked-context{display:grid;gap:5px;padding:12px 14px;border-radius:14px;background:rgba(102,254,203,.055);border:1px solid rgba(102,254,203,.13)}
+.assignment-line{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:12px}.assignment-line>span,.task-assignees>span{display:inline-flex;padding:5px 8px;border-radius:999px;background:rgba(255,255,255,.045);border:1px solid var(--line);color:#c7d3dd;font-size:10px}
+.project-head-badges{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px}
+.task-row{grid-template-columns:auto minmax(0,1fr) auto;padding:15px;background:rgba(255,255,255,.032);border:1px solid transparent}
+.task-row:hover{border-color:rgba(102,254,203,.10);background:rgba(255,255,255,.045)}
+.task-row.task-blocked{border-color:rgba(242,195,107,.16);background:rgba(242,195,107,.045)}
+.task-check{width:28px;height:28px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mint)}
+.task-check.done{background:rgba(102,254,203,.12);border-color:rgba(102,254,203,.26)}
+.task-assignees{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.task-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.task-actions button{border:1px solid var(--line);background:rgba(255,255,255,.035);color:#e9f0f5;border-radius:9px;padding:7px 9px}
+
+/* Client relationship page */
+.clickable-card{cursor:pointer}.client-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto}.card-arrow{font-size:28px;color:var(--mint);opacity:.65;transition:transform .2s ease}.clickable-card:hover .card-arrow{transform:translateX(4px)}
+.avatar.xlarge{width:74px;height:74px;font-size:24px}
+.client-detail-summary{display:flex;gap:16px;align-items:center;padding:15px;margin-bottom:14px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid var(--line)}
+.client-detail-summary h3{font-size:25px;margin:5px 0}.client-detail-summary p{margin:0;color:var(--muted)}
+.client-related-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}.client-related-grid .panel{padding:17px}.client-related-grid h3{font-size:29px;margin:8px 0 14px}
+.related-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border:0;border-bottom:1px solid rgba(255,255,255,.055);background:transparent;color:inherit;text-align:left}.related-row small{color:var(--muted)}
+
+/* Service/catalog controls */
+.category-admin-strip{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 18px;padding:12px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.025)}
+.category-admin-strip>span{color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-right:4px}
+.tiny-action{border:1px solid var(--line);background:rgba(255,255,255,.035);color:#dce8ee;border-radius:999px;padding:7px 10px}
+.mini-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+
+/* Finance: desktop table; mobile cards below. */
+.invoice-table{overflow:visible;border:1px solid rgba(255,255,255,.055);border-radius:17px;background:rgba(4,15,24,.16)}
+.invoice-head,.invoice-row{min-width:0;grid-template-columns:1.15fr 1fr .72fr .72fr .7fr minmax(180px,1.15fr)}
+.invoice-head{padding:10px 12px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+.invoice-row{padding:13px 12px}.invoice-row:last-child{border-bottom:0}.invoice-row>span{min-width:0}.invoice-row>span:nth-child(2){overflow:hidden;text-overflow:ellipsis}
+.invoice-actions{align-items:center}.invoice-actions button{white-space:nowrap}
+
+/* Owner cleanup */
+.danger-zone{border-color:rgba(255,126,140,.18)!important}.danger-zone::before{background:radial-gradient(circle at 40% 45%,rgba(255,126,140,.08),transparent 70%)}
+.cleanup-counts{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;align-items:baseline;margin:18px 0}.cleanup-counts strong{font-size:30px}.cleanup-counts span{color:var(--muted)}
+.test-toggle{padding:12px 14px;border-radius:14px;border:1px solid rgba(242,195,107,.18);background:rgba(242,195,107,.05)}
+
+/* First registration tutorial: one-time gate, not a permanent application section. */
+.registration-tour-stage{position:relative;z-index:3;min-height:100vh;display:grid;place-items:center;padding:28px;overflow:hidden;background:rgba(4,14,22,.30)}
+.registration-tour-stage::before,.registration-tour-stage::after{content:"";position:absolute;z-index:-1;pointer-events:none;border-radius:46% 54% 64% 36%/55% 38% 62% 45%;filter:blur(36px)}
+.registration-tour-stage::before{width:62vw;height:62vw;left:-24vw;top:-32vw;background:radial-gradient(circle,rgba(102,254,203,.22),transparent 67%);animation:tutorialWaterA 14s ease-in-out infinite alternate}
+.registration-tour-stage::after{width:58vw;height:58vw;right:-22vw;bottom:-30vw;background:radial-gradient(circle,rgba(121,217,255,.16),transparent 68%);animation:tutorialWaterB 17s ease-in-out infinite alternate}
+@keyframes tutorialWaterA{to{transform:translate(16%,22%) rotate(12deg) scale(1.09);border-radius:63% 37% 42% 58%/36% 62% 38% 64%}}
+@keyframes tutorialWaterB{to{transform:translate(-15%,-18%) rotate(-10deg) scale(.94);border-radius:38% 62% 59% 41%/61% 39% 57% 43%}}
+.registration-tour-card{width:min(720px,100%);padding:42px;border-radius:34px;border:1px solid rgba(170,234,235,.15);background:rgba(11,29,42,.84);backdrop-filter:blur(30px) saturate(130%);box-shadow:0 36px 110px rgba(0,7,16,.42);position:relative;overflow:hidden}
+.registration-tour-card>.brand-mark{width:64px;height:64px;margin-bottom:26px}.registration-tour-card h1{font-size:clamp(42px,7vw,76px);line-height:.94;letter-spacing:-.06em;font-weight:700;margin:15px 0 18px;max-width:640px}.registration-tour-card>p{color:#b5c3ce;font-size:18px;line-height:1.65;max-width:620px}.registration-tour-card>small{display:block;color:var(--muted);margin-top:17px;line-height:1.5}
+.tour-counter{position:absolute;right:34px;top:36px;padding:7px 10px;border-radius:999px;border:1px solid var(--line);color:var(--mint);font-size:11px;font-weight:700}.tour-progress{height:6px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;margin:28px 0 22px}.tour-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--mint),#79d9ff);transition:width .45s cubic-bezier(.2,.75,.2,1)}
+
+/* Form quality and action layout */
+fieldset{border:1px solid var(--line);border-radius:17px;padding:14px}legend{padding:0 7px;color:#dce7ee;font-weight:600}
+.card-actions{display:flex;gap:6px;flex-wrap:wrap}.button-row{align-items:center}.danger{border-color:rgba(255,126,140,.18)!important}
+
+/* Mobile is a native-feeling stacked workspace, not a squeezed desktop. */
+@media(max-width:760px){
+  .page::before{display:none}
+  .topbar{padding:18px 17px 13px}.topbar h1{font-size:25px}.page{padding:8px 14px 96px}
+  .page-heading{display:flex;flex-direction:column;gap:4px}.page-heading h2{font-size:44px;line-height:.96}.page-heading>.primary-button,.page-heading>.button-row{width:100%}.page-heading>.primary-button{justify-content:center}
+  .command-hero{padding:26px 21px;border-radius:25px}.command-hero h2{font-size:45px}.health-card{padding:18px}
+  .metrics{grid-template-columns:1fr 1fr}.metric-card{min-width:0}.metric-card strong{font-size:23px;overflow-wrap:anywhere}
+  .panel{padding:17px}.panel-head{gap:10px}.panel-head{flex-direction:column}.panel-head>button{width:100%}
+  .project-grid,.client-grid,.worker-grid,.service-admin-grid,.package-grid,.contract-grid,.portfolio-grid,.settings-grid{grid-template-columns:1fr}
+  .project-card{padding:19px}.project-card h3{font-size:25px;margin-top:22px}.project-bottom{align-items:flex-start}.assignment-line{margin-top:10px}
+  .project-detail-head{display:flex;flex-direction:column;align-items:stretch;padding:18px 15px;gap:12px}.project-detail-head>.modal-close{align-self:flex-start}.project-detail-head h2{font-size:30px}.project-head-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}.project-head-actions button{width:100%}
+  .project-tabs{padding:9px 14px 0;gap:7px;scroll-snap-type:x proximity}.project-tabs button{scroll-snap-align:start}.project-tab-content{padding:18px 14px 88px}
+  .project-summary-grid,.commercial-summary{grid-template-columns:1fr 1fr;gap:8px}.project-summary-grid article,.commercial-summary>div{padding:14px}.project-summary-grid strong,.commercial-summary strong{font-size:19px;overflow-wrap:anywhere}
+  .two-panels,.dashboard-columns{grid-template-columns:1fr}
+  .task-row{grid-template-columns:auto minmax(0,1fr);align-items:start}.task-actions{grid-column:1/-1;justify-content:flex-start;padding-left:40px}.task-actions button{flex:1;min-width:90px}.task-assignees{margin-top:8px}
+  .worker-checkbox-grid{grid-template-columns:1fr}.assignment-picker{padding:12px}
+  .client-card{grid-template-columns:auto minmax(0,1fr) auto;padding:17px}.client-detail-summary{align-items:flex-start}.avatar.xlarge{width:58px;height:58px}.client-related-grid{grid-template-columns:1fr}.related-row{padding:12px 0}
+  .category-admin-strip{align-items:stretch}.category-admin-strip>span{width:100%}.tiny-action{flex:1;text-align:center}
+  .invoice-table{border:0;background:transparent;display:grid;gap:10px}.invoice-head{display:none}.invoice-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:0;padding:16px;border:1px solid var(--line)!important;border-radius:18px;background:rgba(17,34,48,.70)}
+  .invoice-row>span{display:grid;gap:3px;align-content:start}.invoice-row>span::before{content:attr(data-label);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.10em;text-transform:uppercase}.invoice-row>span:first-child,.invoice-row>span:last-child{grid-column:1/-1}.invoice-row .status-chip{display:inline-flex;width:max-content}.invoice-actions{display:flex;gap:7px}.invoice-actions button{flex:1;min-width:90px}
+  .contract-grid article{padding:19px}.contract-grid .card-actions button{flex:1}
+  .mood-head{display:flex;flex-direction:column;align-items:stretch}.mood-head .button-row{width:100%}.mood-head .button-row button{flex:1}.mood-grid{grid-template-columns:1fr 1fr}
+  .profile-photo-editor{grid-template-columns:76px 1fr}.profile-photo-preview{width:76px;height:76px}.photo-picker{width:100%}
+  .registration-tour-stage{align-items:end;padding:0}.registration-tour-card{padding:31px 20px 25px;border-radius:30px 30px 0 0;max-height:96vh;overflow:auto}.registration-tour-card h1{font-size:48px}.registration-tour-card>p{font-size:15px}.tour-counter{right:18px;top:22px}.registration-tour-card>.brand-mark{width:54px;height:54px;margin-bottom:20px}.registration-tour-card .button-row{display:grid;grid-template-columns:1fr 1.4fr;width:100%}.registration-tour-card .button-row button{width:100%}
+  .modal-card{padding:24px 17px}.modal-head{gap:10px}.form-grid.two{grid-template-columns:1fr}.stack-form button.primary-button,.stack-form button.secondary-button{width:100%}
+  .approval-actions.wide{grid-template-columns:1fr}.role-check-grid{grid-template-columns:1fr}
+  .quick-grid{grid-template-columns:1fr 1fr}.quick-grid button{padding:15px}
+  .more-grid{grid-template-columns:1fr 1fr}.mobile-nav{background:rgba(5,17,26,.94);backdrop-filter:blur(26px) saturate(130%)}
+}
+
+@media(max-width:420px){
+  .metrics{grid-template-columns:1fr}.project-summary-grid,.commercial-summary{grid-template-columns:1fr}.project-head-actions{grid-template-columns:1fr}.mood-grid{grid-template-columns:1fr}.more-grid{grid-template-columns:1fr 1fr}.invoice-row{grid-template-columns:1fr}.invoice-row>span{grid-column:1/-1}.quick-grid{grid-template-columns:1fr 1fr}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+
+
+/* V0.6 finance expense lifecycle */
+.expense-list{display:grid;gap:10px}
+.expense-card{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:18px;align-items:center;padding:16px 18px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.035)}
+.expense-card h4{font-size:16px;margin:8px 0 4px}.expense-card p,.expense-card small{color:var(--muted);margin:0}.expense-card>strong{font-size:18px;white-space:nowrap}
+@media(max-width:760px){.expense-card{grid-template-columns:1fr}.expense-card>strong{font-size:22px}.expense-card .card-actions{display:flex;flex-wrap:wrap}}

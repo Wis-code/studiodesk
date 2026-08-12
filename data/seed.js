@@ -88,7 +88,7 @@ export const onboardingByRole = {
     ['projects','Projects','Create work independently of packages, then attach services, tasks, contracts and moodboards.'],
     ['team','Team & approvals','Approve new accounts, assign roles and manage worker profiles.'],
     ['finance','Finance','Track contract value, invoices, payments and verification.'],
-    ['more','More','Services, templates, contracts, portfolio, Academy and Settings live here.'],
+    ['more','More','Services, templates, contracts, portfolio and Settings live here.'],
   ],
   worker:[
     ['work','My Work','Only authorized assignments and projects appear here.'],
