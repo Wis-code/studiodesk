@@ -2,9 +2,9 @@
 
 StudioDesk is the creative-operations workspace for Wiscode Studio / Wiscode Innovations Limited. It connects clients, projects, assignments, tasks, creative research, protected previews, contracts, invoices, payments, expenses, delivery and people in one role-aware system.
 
-## Current build — V0.6.1 Liquid UI Correction
+## Current build — V0.6 Liquid Operations
 
-V0.6.1 preserves the V0.6 architecture and adds a focused UI/performance correction pass. The build keeps the bold V0.5 direction, adds a restrained fluid/liquid feel and animated controls, and completes more of the record lifecycles that were previously one-way.
+V0.6 is an architecture and interaction pass, not a cosmetic patch. The build keeps the bold V0.5 direction, adds a restrained fluid/liquid feel and animated controls, and completes more of the record lifecycles that were previously one-way.
 
 ### What changed
 
@@ -46,7 +46,7 @@ Only profiles created as new StudioDesk registrations receive the first-registra
 
 ## Deployment order
 
-Deploy the matching V0.6.1 app. Firestore rules/indexes are unchanged from the working V0.6 source unless your Git history shows otherwise:
+Deploy the matching V0.6 rules/indexes and app together:
 
 ```bash
 cd ~/studiodesk
@@ -56,7 +56,7 @@ firebase deploy --only firestore:indexes
 firebase deploy --only hosting
 ```
 
-After deployment, hard-refresh once so the `studiodesk-v0.6.1-ui-1` service-worker cache replaces V0.5.
+After deployment, hard-refresh once so the `studiodesk-v0.6.0` service-worker cache replaces V0.5.
 
 ## Security
 
