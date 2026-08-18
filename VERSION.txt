@@ -1,2 +1,2 @@
-StudioDesk V0.6.1 — Commercial & Communications Update
-Built: 2026-08-18
+StudioDesk V0.6.2 — Document & UX Repair
+Build date: 2026-08-18
