@@ -1,0 +1,9 @@
+StudioDesk V0.6.4 — PDF Branding Repair
+
+- Embeds the actual StudioDesk mark into generated PDFs.
+- Fixes the TOTAL / AMOUNT overlap in receipts and other documents.
+- Adds PAYMENT VERIFIED status to receipts.
+- Structures payment method, reference, and remaining balance.
+- Applies the same PDF header engine to invoices, receipts, contracts, service lists, and finance reports.
+- Keeps the browser preview logo and PDF logo consistent.
+- No Firestore rules/index changes required.

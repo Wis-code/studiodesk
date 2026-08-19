@@ -49,20 +49,47 @@ function parseDocumentSections(body=''){
   if(!sections.length){const text=htmlToText(body);if(text)sections.push({type:'p',text});}
   return sections;
 }
-function buildPdfBlob(title,body){
-  const company=state.settings?.registeredCompanyName||'Wiscode Innovations Limited',reg=state.settings?.registrationNumber||'',sections=parseDocumentSections(body);
+let pdfLogoCache=null;
+async function loadPdfLogo(){
+  if(pdfLogoCache)return pdfLogoCache;
+  try{
+    const res=await fetch('./assets/studiodesk-mark.png',{cache:'force-cache'});
+    if(!res.ok)throw new Error('Logo asset could not be loaded.');
+    const blob=await res.blob();
+    let img;
+    if('createImageBitmap' in window)img=await createImageBitmap(blob);
+    else img=await new Promise((resolve,reject)=>{const u=URL.createObjectURL(blob),el=new Image();el.onload=()=>{URL.revokeObjectURL(u);resolve(el)};el.onerror=e=>{URL.revokeObjectURL(u);reject(e)};el.src=u;});
+    const canvas=document.createElement('canvas'),s=160;
+    canvas.width=s;canvas.height=s;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#242E3D';ctx.fillRect(0,0,s,s);
+    const pad=12;ctx.drawImage(img,pad,pad,s-pad*2,s-pad*2);
+    const data=canvas.toDataURL('image/jpeg',.92).split(',')[1];
+    const bin=atob(data);let hex='';
+    for(let i=0;i<bin.length;i++)hex+=bin.charCodeAt(i).toString(16).padStart(2,'0').toUpperCase();
+    pdfLogoCache={hex,width:s,height:s};
+    return pdfLogoCache;
+  }catch(err){console.warn('PDF logo unavailable',err);return null;}
+}
+async function buildPdfBlob(title,body){
+  const company=state.settings?.registeredCompanyName||'Wiscode Innovations Limited',reg=state.settings?.registrationNumber||'',sections=parseDocumentSections(body),logo=await loadPdfLogo();
   const objects=[];objects[1]='<< /Type /Catalog /Pages 2 0 R >>';objects[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';objects[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
+  if(logo)objects[5]=`<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${logo.hex.length+1} >>\nstream\n${logo.hex}>\nendstream`;
   const pages=[],newPage=()=>pages.push([]);newPage();
   let y=720;
   const cmd=(x)=>pages[pages.length-1].push(x), ensure=(need=40)=>{if(y<70+need){newPage();y=720;return true}return false};
   const text=(t,x,yv,size=10,bold=false,color='0.141 0.180 0.239')=>cmd(`BT /${bold?'F2':'F1'} ${size} Tf ${color} rg ${x} ${yv} Td (${pdfEscape(t)}) Tj ET\n`);
   const rect=(x,yv,w,h,fill,stroke=null)=>{cmd(`${fill} rg ${x} ${yv} ${w} ${h} re f\n`);if(stroke)cmd(`${stroke} RG ${x} ${yv} ${w} ${h} re S\n`)};
   const wrapped=(t,x,width,size=10,bold=false,lh=15)=>{const max=Math.max(20,Math.floor(width/(size*.56)));for(const line of wrapPdfLine(t,max)){ensure(lh);text(line,x,y,size,bold);y-=lh}};
-  // Branded header: dark navy + mint rule + document identity.
-  rect(0,760,595,82,'0.141 0.180 0.239');rect(0,755,595,5,'0.400 1.000 0.800');
-  text('WISCODE STUDIO',42,808,9,true,'0.400 1.000 0.800');text(title,42,782,22,true,'1 1 1');
-  text(company+(reg?'   RC: '+reg:''),330,808,8,false,'0.88 0.91 0.94');
-  text('Generated '+new Date().toLocaleDateString('en-NG'),330,792,8,false,'0.88 0.91 0.94');
+  const drawHeader=()=>{
+    rect(0,760,595,82,'0.141 0.180 0.239');rect(0,755,595,5,'0.400 1.000 0.800');
+    if(logo)cmd('q 38 0 0 38 42 783 cm /Im1 Do Q\n');
+    text('WISCODE STUDIO',logo?92:42,808,9,true,'0.400 1.000 0.800');
+    text(title,logo?92:42,782,22,true,'1 1 1');
+    text(company+(reg?'   RC: '+reg:''),330,808,8,false,'0.88 0.91 0.94');
+    text('Generated '+new Date().toLocaleDateString('en-NG'),330,792,8,false,'0.88 0.91 0.94');
+  };
+  drawHeader();
   y=720;
   for(const sec of sections){
     if(sec.type==='kv'){
@@ -70,24 +97,35 @@ function buildPdfBlob(title,body){
       let yy=y-8;sec.rows.forEach(r=>{if(r.label){text(r.label.toUpperCase(),54,yy,7.5,true,'0.32 0.37 0.42');const max=Math.max(20,Math.floor(350/(10.5*.56)));const lines=wrapPdfLine(r.value||'-',max);lines.forEach((line,li)=>text(line,184,yy-li*13,10.5,true));yy-=Math.max(20,lines.length*13+6);}else{const lines=wrapPdfLine(r.value,76);lines.forEach((line,li)=>text(line,54,yy-li*14,10.5,true));yy-=Math.max(20,lines.length*14+6)}});y=yy-2;
     } else if(sec.type==='table'){
       const cols=Math.max(...sec.rows.map(r=>r.length)),left=38,width=519,colW=width/cols,rowH=28;ensure(rowH*(sec.rows.length+1)+18);
-      sec.rows.forEach((r,ri)=>{rect(left,y-rowH+5,width,rowH,ri===0?'0.141 0.180 0.239':ri%2?'0.985 0.989 0.989':'0.955 0.968 0.968');r.forEach((cell,ci)=>text(cell||'-',left+12+ci*colW,y-13,ri===0?9:9.5,ri===0,ri===0?'1 1 1':'0.141 0.180 0.239'));y-=rowH});y-=10;
+      sec.rows.forEach((r,ri)=>{rect(left,y-rowH+5,width,rowH,ri===0?'0.141 0.180 0.239':ri%2?'0.985 0.989 0.989':'0.955 0.968 0.968');r.forEach((cell,ci)=>text(cell||'-',left+12+ci*colW,y-13,ri===0?9:9.5,ri===0,ri===0?'1 1 1':'0.141 0.180 0.239'));y-=rowH});y-=14;
     } else if(sec.type==='total'){
-      ensure(65);rect(338,y-48,219,58,'0.141 0.180 0.239');text('TOTAL / AMOUNT',354,y-8,7.5,true,'0.400 1.000 0.800');wrapped(sec.text.replace(/^.*?:\s*/,''),354,185,17,true,22);y-=50;
+      ensure(82);
+      const amount=sec.text.replace(/^.*?:\s*/,'');
+      rect(320,y-60,237,64,'0.141 0.180 0.239');
+      text('TOTAL / AMOUNT',338,y-17,7.5,true,'0.400 1.000 0.800');
+      text(amount,338,y-43,17,true,'1 1 1');
+      y-=82;
     } else if(sec.type==='heading'){
       ensure(35);text(sec.text,38,y,13,true);y-=24;
     } else if(sec.type==='p'){
       ensure(35);wrapped(sec.text.replace(/bank_transfer/g,'Bank Transfer'),38,515,10,false,15);y-=8;
     }
   }
-  // Footer on every page.
-  const pageNums=[];let next=5;pages.forEach(()=>{pageNums.push(next);next+=2});objects[2]=`<< /Type /Pages /Count ${pages.length} /Kids [${pageNums.map(n=>n+' 0 R').join(' ')}] >>`;
-  pages.forEach((parts,idx)=>{const pn=pageNums[idx],cn=pn+1;let c=parts.join('');c+=`0.89 0.91 0.92 RG 38 45 519 0 re S\n`;c+=`BT /F1 8 Tf 0.42 0.46 0.52 rg 38 28 Td (Wiscode Studio · StudioDesk · Page ${idx+1}/${pages.length}) Tj ET\n`;objects[pn]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${cn} 0 R >>`;objects[cn]=`<< /Length ${c.length} >>\nstream\n${c}endstream`});
-  let pdf='%PDF-1.4\n%StudioDesk\n',offsets=[0];for(let i=1;i<objects.length;i++){offsets[i]=pdf.length;pdf+=`${i} 0 obj\n${objects[i]}\nendobj\n`}const xref=pdf.length;pdf+=`xref\n0 ${objects.length}\n0000000000 65535 f \n`;for(let i=1;i<objects.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';pdf+=`trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;return new Blob([pdf],{type:'application/pdf'});
+  const pageNums=[];let next=logo?6:5;pages.forEach(()=>{pageNums.push(next);next+=2});objects[2]=`<< /Type /Pages /Count ${pages.length} /Kids [${pageNums.map(n=>n+' 0 R').join(' ')}] >>`;
+  pages.forEach((parts,idx)=>{const pn=pageNums[idx],cn=pn+1;let c=parts.join('');c+=`0.89 0.91 0.92 RG 38 45 519 0 re S\n`;c+=`BT /F1 8 Tf 0.42 0.46 0.52 rg 38 28 Td (Wiscode Studio - StudioDesk - Page ${idx+1}/${pages.length}) Tj ET\n`;const xobj=logo?' /XObject << /Im1 5 0 R >>':'';objects[pn]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >>${xobj} >> /Contents ${cn} 0 R >>`;objects[cn]=`<< /Length ${c.length} >>\nstream\n${c}endstream`});
+  let pdf='%PDF-1.4\n%StudioDesk\n',offsets=[0];for(let i=1;i<objects.length;i++){if(!objects[i])continue;offsets[i]=pdf.length;pdf+=`${i} 0 obj\n${objects[i]}\nendobj\n`}const xref=pdf.length;pdf+=`xref\n0 ${objects.length}\n0000000000 65535 f \n`;for(let i=1;i<objects.length;i++)pdf+=objects[i]?String(offsets[i]).padStart(10,'0')+' 00000 n \n':'0000000000 00000 f \n';pdf+=`trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;return new Blob([pdf],{type:'application/pdf'});
 }
 function documentHtml(title,body,pdfUrl,fileName){const logoUrl=new URL('./assets/studiodesk-mark.png',location.href).href;return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>*{box-sizing:border-box}body{font-family:'Space Grotesk',Arial,sans-serif;color:#242E3D;margin:0;background:#eef3f2}.toolbar{position:sticky;top:0;z-index:4;display:flex;gap:8px;flex-wrap:wrap;padding:12px max(16px,calc((100vw - 900px)/2));background:#242E3D}.toolbar button,.toolbar a{border:0;border-radius:10px;padding:10px 13px;text-decoration:none;font:600 13px Arial;cursor:pointer}.primary{background:#66FFCC;color:#242E3D}.secondary{background:#FDFFFE;color:#242E3D}.sheet{max-width:900px;margin:20px auto;padding:52px;background:#FDFFFE;min-height:1100px;box-shadow:0 18px 50px rgba(36,46,61,.12)}.brand{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #242E3D;padding-bottom:18px;gap:20px}.brand-left{display:flex;gap:14px;align-items:center}.brand img{width:48px;height:48px;object-fit:contain}.brand h1{margin:4px 0 0;font-size:29px}.mint{color:#21856b;font-size:12px;font-weight:700;letter-spacing:.13em}.meta{color:#667080;font-size:12px;text-align:right}.total{font-size:28px}.box{border:1px solid #dfe5e8;border-radius:14px;padding:18px;margin:18px 0}table{width:100%;border-collapse:collapse;margin:20px 0}th,td{text-align:left;padding:12px;border-bottom:1px solid #e5eaed;vertical-align:top}th{background:#f4f7f7}footer{margin-top:44px;color:#667080;font-size:12px;border-top:1px solid #e5eaed;padding-top:16px}@media(max-width:700px){.sheet{margin:0;padding:28px 20px;min-height:100vh;box-shadow:none}.brand{display:grid}.meta{text-align:left}.toolbar{padding:10px}.toolbar>*{flex:1;text-align:center}}@media print{.toolbar{display:none}.sheet{box-shadow:none;margin:0;padding:20px;max-width:none}.brand{break-inside:avoid}}</style></head><body><div class="toolbar"><button class="primary" onclick="window.print()">Print / Save PDF</button><a class="secondary" id="downloadPdf" href="${pdfUrl}" download="${fileName}">Download PDF</a><button class="secondary" id="sharePdf">Share PDF</button></div><div class="sheet"><div class="brand"><div class="brand-left"><img src="${logoUrl}" alt="Wiscode Studio"><div><div class="mint">WISCODE STUDIO</div><h1>${esc(title)}</h1></div></div><div class="meta">${esc(state.settings?.registeredCompanyName||'Wiscode Innovations Limited')}<br>${esc(state.settings?.registrationNumber||'')}</div></div>${body}<footer>Generated by StudioDesk · ${new Date().toLocaleString('en-NG')}</footer></div><script>document.getElementById('sharePdf').onclick=async()=>{try{const r=await fetch(${JSON.stringify(pdfUrl)});const blob=await r.blob();const file=new File([blob],${JSON.stringify(fileName)},{type:'application/pdf'});if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({title:${JSON.stringify(title)},files:[file]})}else{document.getElementById('downloadPdf').click();alert('PDF downloaded. Share it from your device.') }}catch(e){console.error(e);document.getElementById('downloadPdf').click()}}</script></body></html>`;}
-function openPrintDocument(title,body){try{const pdfBlob=buildPdfBlob(title,body),pdfUrl=URL.createObjectURL(pdfBlob),fileName=(safeFile(title)||'StudioDesk-document')+'.pdf',html=documentHtml(title,body,pdfUrl,fileName),htmlUrl=URL.createObjectURL(new Blob([html],{type:'text/html'}));const w=window.open(htmlUrl,'_blank');if(!w){URL.revokeObjectURL(htmlUrl);toast('Allow pop-ups to preview this document.','error');return;}setTimeout(()=>URL.revokeObjectURL(htmlUrl),60000);setTimeout(()=>URL.revokeObjectURL(pdfUrl),300000);}catch(err){console.error(err);toast('Could not build this document.','error');}}
-async function shareDocumentPdf(title,body){try{const blob=buildPdfBlob(title,body),file=new File([blob],(safeFile(title)||'StudioDesk-document')+'.pdf',{type:'application/pdf'});if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({title,files:[file]});return}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('PDF downloaded. Share it from your device.');}catch(e){if(e?.name!=='AbortError'){console.error(e);toast('Could not share the PDF.','error')}}}
-function invoiceDoc(i,receipt=false,payment=null){const p=projectById(i.projectId);const amount=receipt?Number(payment?.amount||0):Number(i.amount||0);return `<div class="box"><strong>${receipt?'Receipt':'Invoice'} No.</strong> ${esc(receipt?('RCT-'+String(payment?.id||'').slice(0,8).toUpperCase()):(i.invoiceNo||i.id))}<br><strong>Client:</strong> ${esc(i.clientName||p?.clientName||'Client')}<br><strong>Project:</strong> ${esc(p?.name||'—')}<br><strong>Date:</strong> ${dateLabel(receipt?(payment?.verifiedAt||payment?.createdAt):(i.issuedAt||i.createdAt))}</div><table><tr><th>Description</th><th>Amount</th></tr><tr><td>${esc(receipt?'Verified payment received':(i.milestoneLabel||p?.scopeLabel||p?.name||'Professional services'))}</td><td><strong>${fmt(amount,i.currency||payment?.currency||'NGN')}</strong></td></tr></table><p class="total">${receipt?'Amount received':'Total'}: <strong>${fmt(amount,i.currency||payment?.currency||'NGN')}</strong></p>${receipt?`<p>Payment method: ${esc(String(payment?.method||'—').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()))} · Reference: ${esc(payment?.reference||'—')}</p><p>Remaining invoice balance: ${fmt(i.balance||0,i.currency||'NGN')}</p>`:`<p>Balance due: ${fmt(i.balance??i.amount,i.currency||'NGN')}</p><p>Due: ${esc(i.dueDate||'As agreed')}</p>`}`;}
+async function openPrintDocument(title,body){try{const pdfBlob=await buildPdfBlob(title,body),pdfUrl=URL.createObjectURL(pdfBlob),fileName=(safeFile(title)||'StudioDesk-document')+'.pdf',html=documentHtml(title,body,pdfUrl,fileName),htmlUrl=URL.createObjectURL(new Blob([html],{type:'text/html'}));const w=window.open(htmlUrl,'_blank');if(!w){URL.revokeObjectURL(htmlUrl);toast('Allow pop-ups to preview this document.','error');return;}setTimeout(()=>URL.revokeObjectURL(htmlUrl),60000);setTimeout(()=>URL.revokeObjectURL(pdfUrl),300000);}catch(err){console.error(err);toast('Could not build this document.','error');}}
+async function shareDocumentPdf(title,body){try{const blob=await buildPdfBlob(title,body),file=new File([blob],(safeFile(title)||'StudioDesk-document')+'.pdf',{type:'application/pdf'});if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({title,files:[file]});return}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('PDF downloaded. Share it from your device.');}catch(e){if(e?.name!=='AbortError'){console.error(e);toast('Could not share the PDF.','error')}}}
+function invoiceDoc(i,receipt=false,payment=null){
+  const p=projectById(i.projectId),amount=receipt?Number(payment?.amount||0):Number(i.amount||0),currency=i.currency||payment?.currency||'NGN';
+  const status=receipt?'<p><strong>PAYMENT VERIFIED</strong></p>':'';
+  const detail=receipt
+    ?`<div class="box"><strong>Payment method:</strong> ${esc(String(payment?.method||'—').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()))}<br><strong>Reference:</strong> ${esc(payment?.reference||'—')}<br><strong>Remaining balance:</strong> ${fmt(i.balance||0,currency)}</div>`
+    :`<div class="box"><strong>Balance due:</strong> ${fmt(i.balance??i.amount,currency)}<br><strong>Due:</strong> ${esc(i.dueDate||'As agreed')}</div>`;
+  return `${status}<div class="box"><strong>${receipt?'Receipt':'Invoice'} No.</strong> ${esc(receipt?('RCT-'+String(payment?.id||'').slice(0,8).toUpperCase()):(i.invoiceNo||i.id))}<br><strong>Client:</strong> ${esc(i.clientName||p?.clientName||'Client')}<br><strong>Project:</strong> ${esc(p?.name||'—')}<br><strong>Date:</strong> ${dateLabel(receipt?(payment?.verifiedAt||payment?.createdAt):(i.issuedAt||i.createdAt))}</div><table><tr><th>Description</th><th>Amount</th></tr><tr><td>${esc(receipt?'Verified payment received':(i.milestoneLabel||p?.scopeLabel||p?.name||'Professional services'))}</td><td><strong>${fmt(amount,currency)}</strong></td></tr></table><p class="total">${receipt?'Amount received':'Total'}: <strong>${fmt(amount,currency)}</strong></p>${detail}`;
+}
 function contractDoc(c){const p=projectById(c.projectId),ms=c.milestones||[];return `<div class="box"><strong>Client:</strong> ${esc(p?.clientName||'Client')}<br><strong>Project:</strong> ${esc(p?.name||'—')}<br><strong>Status:</strong> ${esc(c.status||'draft')}<br><strong>Contract value:</strong> ${fmt(c.value,c.currency||'NGN')}</div><h3>Scope & terms</h3><p>${esc(c.terms||'No terms summary recorded.').replaceAll('\n','<br>')}</p>${ms.length?`<h3>Payment milestones</h3><table><tr><th>Milestone</th><th>Amount</th></tr>${ms.map(m=>`<tr><td>${esc(m.label||'Milestone')}</td><td>${fmt(m.amount,c.currency||'NGN')}</td></tr>`).join('')}</table>`:''}${c.documentUrl?`<p><strong>Attached signed agreement:</strong> ${esc(c.documentUrl)}</p>`:''}`;}
 async function shareInvoice(i){return shareDocumentPdf(i.invoiceNo||'Invoice',invoiceDoc(i));}
 function financeRows(period=state.financePeriod){const now=new Date(),start=new Date(now);if(period==='month')start.setDate(1);else if(period==='quarter'){start.setMonth(Math.floor(now.getMonth()/3)*3,1)}else if(period==='year')start.setMonth(0,1);else start.setFullYear(1970,0,1);start.setHours(0,0,0,0);const d=x=>{const v=x?.date||x?.verifiedAt||x?.issuedAt||x?.createdAt;const z=v?.toDate?.()||new Date(v||0);return z>=start&&z<=now};return {payments:state.workspace.payments.filter(x=>x.status==='verified'&&d(x)),expenses:state.workspace.expenses.filter(x=>x.status==='recorded'&&d(x)),invoices:state.workspace.invoices.filter(x=>isReceivableInvoice(x)&&d(x))};}
