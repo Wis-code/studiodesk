@@ -31,46 +31,158 @@ function htmlToText(html=''){const holder=document.createElement('div');holder.i
 function wrapPdfLine(line,max=82){const words=String(line||'').trim().split(/\s+/).filter(Boolean),out=[];let cur='';for(const w of words){if((cur+' '+w).trim().length>max){if(cur)out.push(cur);cur=w}else cur=(cur+' '+w).trim()}if(cur)out.push(cur);return out.length?out:[''];}
 function pdfEscape(v){return pdfAscii(v).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');}
 function parseDocumentSections(body=''){
-  const host=document.createElement('div');host.innerHTML=String(body||'');
+  const host=document.createElement('div');
+  host.innerHTML=String(body||'');
   const sections=[];
-  host.querySelectorAll('.box').forEach(box=>{
-    const rows=[];box.innerHTML.split(/<br\s*\/?\s*>/i).forEach(part=>{
-      const h=document.createElement('div');h.innerHTML=part;const text=(h.textContent||'').trim();if(!text)return;
-      const m=text.match(/^([^:]{1,45}):\s*(.*)$/);rows.push(m?{label:m[1].trim(),value:m[2].trim()}:{label:'',value:text});
-    });if(rows.length)sections.push({type:'kv',rows});
-  });
-  host.querySelectorAll('table').forEach(table=>{
-    const rows=[...table.querySelectorAll('tr')].map(tr=>[...tr.querySelectorAll('th,td')].map(c=>(c.textContent||'').trim())).filter(r=>r.some(Boolean));
-    if(rows.length)sections.push({type:'table',rows});
-  });
-  host.querySelectorAll('.total').forEach(el=>sections.push({type:'total',text:(el.textContent||'').trim()}));
-  host.querySelectorAll('h2,h3').forEach(el=>sections.push({type:'heading',text:(el.textContent||'').trim()}));
-  host.querySelectorAll('p').forEach(el=>{if(el.closest('.box')||el.classList.contains('total'))return;const text=(el.textContent||'').trim();if(text)sections.push({type:'p',text});});
-  if(!sections.length){const text=htmlToText(body);if(text)sections.push({type:'p',text});}
+
+  const addElement=(el)=>{
+    if(!el)return;
+
+    if(el.classList?.contains('box')){
+      const rows=[];
+      el.innerHTML.split(/<br\s*\/?\s*>/i).forEach(part=>{
+        const h=document.createElement('div');
+        h.innerHTML=part;
+        const value=(h.textContent||'').trim();
+        if(!value)return;
+        const m=value.match(/^([^:]{1,45}):\s*(.*)$/);
+        rows.push(m
+          ? {label:m[1].trim(),value:m[2].trim()}
+          : {label:'',value}
+        );
+      });
+      if(rows.length)sections.push({type:'kv',rows});
+      return;
+    }
+
+    if(el.tagName==='TABLE'){
+      const rows=[...el.querySelectorAll('tr')]
+        .map(tr=>[...tr.querySelectorAll('th,td')]
+          .map(c=>(c.textContent||'').trim()))
+        .filter(r=>r.some(Boolean));
+
+      if(rows.length)sections.push({type:'table',rows});
+      return;
+    }
+
+    if(el.classList?.contains('total')){
+      sections.push({
+        type:'total',
+        text:(el.textContent||'').trim()
+      });
+      return;
+    }
+
+    if(/^H[2-6]$/.test(el.tagName)){
+      const text=(el.textContent||'').trim();
+      if(text)sections.push({type:'heading',text});
+      return;
+    }
+
+    if(el.tagName==='P'){
+      const text=(el.textContent||'').trim();
+      if(text)sections.push({type:'p',text});
+      return;
+    }
+
+    [...el.children].forEach(addElement);
+  };
+
+  [...host.children].forEach(addElement);
+
+  if(!sections.length){
+    const text=htmlToText(body);
+    if(text)sections.push({type:'p',text});
+  }
+
   return sections;
 }
+
+
 let pdfLogoCache=null;
+
 async function loadPdfLogo(){
-  if(pdfLogoCache)return pdfLogoCache;
+  if(pdfLogoCache) return pdfLogoCache;
+
   try{
     const res=await fetch('./assets/studiodesk-mark.png',{cache:'force-cache'});
-    if(!res.ok)throw new Error('Logo asset could not be loaded.');
+
+    if(!res.ok){
+      throw new Error('StudioDesk logo could not be loaded.');
+    }
+
     const blob=await res.blob();
-    let img;
-    if('createImageBitmap' in window)img=await createImageBitmap(blob);
-    else img=await new Promise((resolve,reject)=>{const u=URL.createObjectURL(blob),el=new Image();el.onload=()=>{URL.revokeObjectURL(u);resolve(el)};el.onerror=e=>{URL.revokeObjectURL(u);reject(e)};el.src=u;});
-    const canvas=document.createElement('canvas'),s=160;
-    canvas.width=s;canvas.height=s;
+
+    const img=await new Promise((resolve,reject)=>{
+      const url=URL.createObjectURL(blob);
+      const el=new Image();
+
+      el.onload=()=>{
+        URL.revokeObjectURL(url);
+        resolve(el);
+      };
+
+      el.onerror=(err)=>{
+        URL.revokeObjectURL(url);
+        reject(err);
+      };
+
+      el.src=url;
+    });
+
+    const canvas=document.createElement('canvas');
+    const size=160;
+
+    canvas.width=size;
+    canvas.height=size;
+
     const ctx=canvas.getContext('2d');
-    ctx.fillStyle='#242E3D';ctx.fillRect(0,0,s,s);
-    const pad=12;ctx.drawImage(img,pad,pad,s-pad*2,s-pad*2);
-    const data=canvas.toDataURL('image/jpeg',.92).split(',')[1];
-    const bin=atob(data);let hex='';
-    for(let i=0;i<bin.length;i++)hex+=bin.charCodeAt(i).toString(16).padStart(2,'0').toUpperCase();
-    pdfLogoCache={hex,width:s,height:s};
+
+    ctx.fillStyle='#242E3D';
+    ctx.fillRect(0,0,size,size);
+
+    const pad=12;
+
+    ctx.drawImage(
+      img,
+      pad,
+      pad,
+      size-(pad*2),
+      size-(pad*2)
+    );
+
+    const data=canvas
+      .toDataURL('image/jpeg',0.92)
+      .split(',')[1];
+
+    const bin=atob(data);
+
+    let hex='';
+
+    for(let i=0;i<bin.length;i++){
+      hex+=bin
+        .charCodeAt(i)
+        .toString(16)
+        .padStart(2,'0')
+        .toUpperCase();
+    }
+
+    pdfLogoCache={
+      hex,
+      width:size,
+      height:size
+    };
+
     return pdfLogoCache;
-  }catch(err){console.warn('PDF logo unavailable',err);return null;}
+
+  }catch(err){
+    console.warn('PDF logo unavailable:',err);
+
+    // PDFs should still generate even if the logo fails.
+    return null;
+  }
 }
+
 async function buildPdfBlob(title,body){
   const company=state.settings?.registeredCompanyName||'Wiscode Innovations Limited',reg=state.settings?.registrationNumber||'',sections=parseDocumentSections(body),logo=await loadPdfLogo();
   const objects=[];objects[1]='<< /Type /Catalog /Pages 2 0 R >>';objects[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';objects[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
@@ -118,6 +230,12 @@ async function buildPdfBlob(title,body){
 function documentHtml(title,body,pdfUrl,fileName){const logoUrl=new URL('./assets/studiodesk-mark.png',location.href).href;return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>*{box-sizing:border-box}body{font-family:'Space Grotesk',Arial,sans-serif;color:#242E3D;margin:0;background:#eef3f2}.toolbar{position:sticky;top:0;z-index:4;display:flex;gap:8px;flex-wrap:wrap;padding:12px max(16px,calc((100vw - 900px)/2));background:#242E3D}.toolbar button,.toolbar a{border:0;border-radius:10px;padding:10px 13px;text-decoration:none;font:600 13px Arial;cursor:pointer}.primary{background:#66FFCC;color:#242E3D}.secondary{background:#FDFFFE;color:#242E3D}.sheet{max-width:900px;margin:20px auto;padding:52px;background:#FDFFFE;min-height:1100px;box-shadow:0 18px 50px rgba(36,46,61,.12)}.brand{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #242E3D;padding-bottom:18px;gap:20px}.brand-left{display:flex;gap:14px;align-items:center}.brand img{width:48px;height:48px;object-fit:contain}.brand h1{margin:4px 0 0;font-size:29px}.mint{color:#21856b;font-size:12px;font-weight:700;letter-spacing:.13em}.meta{color:#667080;font-size:12px;text-align:right}.total{font-size:28px}.box{border:1px solid #dfe5e8;border-radius:14px;padding:18px;margin:18px 0}table{width:100%;border-collapse:collapse;margin:20px 0}th,td{text-align:left;padding:12px;border-bottom:1px solid #e5eaed;vertical-align:top}th{background:#f4f7f7}footer{margin-top:44px;color:#667080;font-size:12px;border-top:1px solid #e5eaed;padding-top:16px}@media(max-width:700px){.sheet{margin:0;padding:28px 20px;min-height:100vh;box-shadow:none}.brand{display:grid}.meta{text-align:left}.toolbar{padding:10px}.toolbar>*{flex:1;text-align:center}}@media print{.toolbar{display:none}.sheet{box-shadow:none;margin:0;padding:20px;max-width:none}.brand{break-inside:avoid}}</style></head><body><div class="toolbar"><button class="primary" onclick="window.print()">Print / Save PDF</button><a class="secondary" id="downloadPdf" href="${pdfUrl}" download="${fileName}">Download PDF</a><button class="secondary" id="sharePdf">Share PDF</button></div><div class="sheet"><div class="brand"><div class="brand-left"><img src="${logoUrl}" alt="Wiscode Studio"><div><div class="mint">WISCODE STUDIO</div><h1>${esc(title)}</h1></div></div><div class="meta">${esc(state.settings?.registeredCompanyName||'Wiscode Innovations Limited')}<br>${esc(state.settings?.registrationNumber||'')}</div></div>${body}<footer>Generated by StudioDesk · ${new Date().toLocaleString('en-NG')}</footer></div><script>document.getElementById('sharePdf').onclick=async()=>{try{const r=await fetch(${JSON.stringify(pdfUrl)});const blob=await r.blob();const file=new File([blob],${JSON.stringify(fileName)},{type:'application/pdf'});if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({title:${JSON.stringify(title)},files:[file]})}else{document.getElementById('downloadPdf').click();alert('PDF downloaded. Share it from your device.') }}catch(e){console.error(e);document.getElementById('downloadPdf').click()}}</script></body></html>`;}
 async function openPrintDocument(title,body){try{const pdfBlob=await buildPdfBlob(title,body),pdfUrl=URL.createObjectURL(pdfBlob),fileName=(safeFile(title)||'StudioDesk-document')+'.pdf',html=documentHtml(title,body,pdfUrl,fileName),htmlUrl=URL.createObjectURL(new Blob([html],{type:'text/html'}));const w=window.open(htmlUrl,'_blank');if(!w){URL.revokeObjectURL(htmlUrl);toast('Allow pop-ups to preview this document.','error');return;}setTimeout(()=>URL.revokeObjectURL(htmlUrl),60000);setTimeout(()=>URL.revokeObjectURL(pdfUrl),300000);}catch(err){console.error(err);toast('Could not build this document.','error');}}
 async function shareDocumentPdf(title,body){try{const blob=await buildPdfBlob(title,body),file=new File([blob],(safeFile(title)||'StudioDesk-document')+'.pdf',{type:'application/pdf'});if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({title,files:[file]});return}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('PDF downloaded. Share it from your device.');}catch(e){if(e?.name!=='AbortError'){console.error(e);toast('Could not share the PDF.','error')}}}
+function receiptDocumentTitle(i,payment){
+  const p=projectById(i.projectId);
+  const receiptNo='RCT-'+String(payment?.id||'').slice(0,8).toUpperCase();
+  const client=i.clientName||p?.clientName||'Client';
+  return `${receiptNo} — ${client}`;
+}
 function invoiceDoc(i,receipt=false,payment=null){
   const p=projectById(i.projectId),amount=receipt?Number(payment?.amount||0):Number(i.amount||0),currency=i.currency||payment?.currency||'NGN';
   const status=receipt?'<p><strong>PAYMENT VERIFIED</strong></p>':'';
@@ -467,7 +585,7 @@ function bind(){
   $$('[data-action="test-notification"]').forEach(b=>b.onclick=()=>runAction(testNotification,b));
   $$('[data-print-invoice]').forEach(b=>b.onclick=()=>{const i=state.workspace.invoices.find(x=>x.id===b.dataset.printInvoice);if(i)openPrintDocument(i.invoiceNo||'Invoice',invoiceDoc(i));});
   $$('[data-share-invoice]').forEach(b=>b.onclick=()=>{const i=state.workspace.invoices.find(x=>x.id===b.dataset.shareInvoice);if(i)shareInvoice(i);});
-  $$('[data-receipt-invoice]').forEach(b=>b.onclick=()=>{const i=state.workspace.invoices.find(x=>x.id===b.dataset.receiptInvoice),pay=state.workspace.payments.filter(x=>x.invoiceId===i?.id&&x.status==='verified').sort((a,b)=>String(b.verifiedAt||b.createdAt).localeCompare(String(a.verifiedAt||a.createdAt)))[0];if(i&&pay)openPrintDocument('Payment Receipt',invoiceDoc(i,true,pay));else toast('No verified payment found for this invoice.','error');});
+  $$('[data-receipt-invoice]').forEach(b=>b.onclick=()=>{const i=state.workspace.invoices.find(x=>x.id===b.dataset.receiptInvoice),pay=state.workspace.payments.filter(x=>x.invoiceId===i?.id&&x.status==='verified').sort((a,b)=>String(b.verifiedAt||b.createdAt).localeCompare(String(a.verifiedAt||a.createdAt)))[0];if(i&&pay)openPrintDocument(receiptDocumentTitle(i,pay),invoiceDoc(i,true,pay));else toast('No verified payment found for this invoice.','error');});
   $$('[data-print-contract]').forEach(b=>b.onclick=()=>{const c=state.workspace.contracts.find(x=>x.id===b.dataset.printContract);if(c)openPrintDocument(c.title||'Project Agreement',contractDoc(c));});
   $$('[data-share-contract]').forEach(b=>b.onclick=()=>{const c=state.workspace.contracts.find(x=>x.id===b.dataset.shareContract);if(c)shareDocumentPdf(c.title||'Project Agreement',contractDoc(c));});
   $$('[data-action="reload-app"]').forEach(b=>b.onclick=()=>location.reload());
