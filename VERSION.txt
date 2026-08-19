@@ -1,2 +1,1 @@
-StudioDesk V0.6.2 — Document & UX Repair
-Build date: 2026-08-18
+V0.6.3 — Document design + notification test
