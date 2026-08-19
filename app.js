@@ -412,7 +412,179 @@ function workflowModal(w=null){const steps=(w?.steps||[]).map((x,i)=>Array.isArr
 function taskModal(projectId='',t=null){const workers=activeWorkers(),fixedProjectId=projectId||t?.projectId||'',p=fixedProjectId?projectById(fixedProjectId):null,manager=t?canManageProject(p):true,operational=t&&t.assigneeIds?.includes(state.authUser?.uid)&&!manager,manageable=projects().filter(canManageProject);const projectField=fixedProjectId?`<input type="hidden" name="projectId" value="${esc(fixedProjectId)}"><div class="locked-context"><span>Project</span><strong>${esc(p?.name||'Project')}</strong></div>`:`<label>Project<select name="projectId" required><option value="">Select project</option>${manageable.map(x=>`<option value="${x.id}">${esc(x.name)} · ${esc(x.clientName||'')}</option>`).join('')}</select></label>`;return `${modalHead('Production',t?'Edit task':'Create task',operational?'You can update operational status on your assigned task.':'Assignments can contain multiple workers and can be changed later.') }<form id="task-form" class="stack-form" data-task-id="${t?.id||''}">${projectField}<label>Task title<input name="title" required value="${esc(t?.title||'')}" ${operational?'disabled':''}></label><label>Details / expected output<textarea name="details" ${operational?'disabled':''}>${esc(t?.details||'')}</textarea></label><div class="form-grid two"><label>Deadline<input type="date" name="deadline" value="${esc(t?.deadline||'')}" ${operational?'disabled':''}></label><label>Priority<select name="priority" ${operational?'disabled':''}><option value="normal" ${t?.priority==='normal'||!t?'selected':''}>Normal</option><option value="high" ${t?.priority==='high'?'selected':''}>High</option><option value="urgent" ${t?.priority==='urgent'?'selected':''}>Urgent</option></select></label></div><div class="form-grid two"><label>Status<select name="status"><option value="not-started" ${t?.status==='not-started'||!t?'selected':''}>Not started</option><option value="in-progress" ${t?.status==='in-progress'?'selected':''}>In progress</option><option value="blocked" ${t?.status==='blocked'?'selected':''}>Blocked</option><option value="done" ${['done','approved'].includes(t?.status)?'selected':''}>Complete</option></select></label><label>Estimated hours<input type="number" step="0.5" min="0" name="estimatedHours" value="${Number(t?.estimatedHours||1)}" ${operational?'disabled':''}></label></div><label>Blocked reason<textarea name="blockedReason" placeholder="Required when blocked">${esc(t?.blockedReason||'')}</textarea></label>${!operational?`<fieldset><legend>Assigned workers</legend><div class="worker-checkbox-grid">${workers.map(u=>`<label><input type="checkbox" name="assigneeIds" value="${u.id}" ${t?.assigneeIds?.includes(u.id)?'checked':''}><span>${esc(u.displayName)}<small>${esc(u.email||'')}</small></span></label>`).join('')||'<small>No approved workers. Leave task unassigned.</small>'}</div></fieldset>`:''}<button class="primary-button">${t?'Save task':'Create task'}</button></form>`;}
 function moodboardModal(projectId,m=null){return `${modalHead('Creative workspace',m?'Edit moodboard':'Create moodboard')}<form id="moodboard-form" class="stack-form" data-moodboard-id="${m?.id||''}"><input type="hidden" name="projectId" value="${projectId||m?.projectId||''}"><label>Board title<input name="title" required value="${esc(m?.title||'')}" placeholder="Visual direction 01"></label><label>Description<textarea name="description">${esc(m?.description||'')}</textarea></label><label class="toggle-line"><input type="checkbox" name="clientVisible" ${m?.clientVisible?'checked':''}> Client can see this board</label><button class="primary-button">${m?'Save moodboard':'Create moodboard'}</button></form>`;}
 function moodItemModal(moodboardId,item=null){return `${modalHead('Moodboard',item?'Edit reference':'Add reference')}<form id="mood-item-form" class="stack-form" data-item-id="${item?.id||''}"><input type="hidden" name="moodboardId" value="${moodboardId||item?.moodboardId||''}"><label>Image URL / Drive image URL<input name="imageUrl" value="${esc(item?.imageUrl||'')}" placeholder="https://..."></label><label>Source URL<input name="sourceUrl" value="${esc(item?.sourceUrl||'')}" placeholder="https://..."></label><label>Caption<input name="caption" required value="${esc(item?.caption||'')}"></label><label>Design note<textarea name="note" placeholder="Why this reference matters">${esc(item?.note||'')}</textarea></label><button class="primary-button">${item?'Save reference':'Add reference'}</button></form>`;}
-function contractModal(projectId,c=null){const p=projectById(projectId);return `${modalHead('Commercial agreement',c?'Edit contract':'Create contract')}<form id="contract-form" class="stack-form" data-contract-id="${c?.id||''}"><input type="hidden" name="projectId" value="${projectId}"><label>Agreement title<input name="title" value="${esc(c?.title||`${p?.name||'Project'} Agreement`)}"></label><div class="form-grid two"><label>Contract value<input type="number" name="value" value="${Number(c?.value||p?.contractValue||p?.totalValue||0)}"></label><label>Currency<select name="currency"><option>NGN</option><option>USD</option><option>GBP</option></select></label></div><label>Scope / terms summary<textarea name="terms" rows="6">${esc(c?.terms||'')}</textarea></label><label>Existing signed contract / Drive URL<input name="documentUrl" value="${esc(c?.documentUrl||'')}"></label><label>Milestones (one per line: Label | Amount)<textarea name="milestonesText">${(c?.milestones||[]).map(m=>`${m.label} | ${m.amount}`).join('\n')}</textarea></label><label>Status<select name="status"><option value="draft" ${c?.status==='draft'?'selected':''}>Draft</option>${canFinalizeCommercial()?`<option value="sent" ${c?.status==='sent'?'selected':''}>Sent</option><option value="accepted" ${c?.status==='accepted'?'selected':''}>Accepted</option><option value="signed" ${c?.status==='signed'?'selected':''}>Signed</option>`:''}</select><small>${canFinalizeCommercial()?'You can finalize agreement status.':'Workers prepare drafts; Finance/Admin finalizes sending/signing states.'}</small></label><button class="primary-button">Save agreement</button></form>`;}
+function standardContractTerms(p){
+  const client=p?.clientName||'the Client';
+  const project=p?.name||'the Project';
+
+  return `GENERAL CREATIVE SERVICES AGREEMENT
+
+1. PROJECT & SCOPE
+Wiscode Studio will provide the creative services and deliverables agreed for "${project}" for ${client}. The project record, approved proposal, service list, quotation or written brief forms part of the agreed scope.
+
+2. CLIENT RESPONSIBILITIES
+The Client will provide accurate information, required brand materials, content, references, approvals and feedback reasonably needed to complete the work. The Client confirms that materials supplied to Wiscode Studio may legally be used for the project.
+
+3. FEES & PAYMENT
+The agreed project value and any payment milestones are stated in this agreement and related invoices. Work, delivery or release of final files may be paused where an agreed payment is overdue. Additional work outside the agreed scope may require a revised quote or separate invoice.
+
+4. REVISIONS & CHANGE REQUESTS
+Revisions are limited to the scope and revision allowance agreed for the project. New directions, additional deliverables or substantial changes after approval may be treated as additional work and quoted separately.
+
+5. TIMELINE & DELAYS
+Timelines depend on timely feedback, approvals, content and payments from the Client. Delays caused by missing information, changed scope or delayed approvals may move the delivery date.
+
+6. APPROVAL & FINAL DELIVERY
+Client approval confirms acceptance of the relevant creative direction or deliverable. Final production files are released only after applicable quality checks and required payments have been verified.
+
+7. INTELLECTUAL PROPERTY
+Upon full payment, rights in the approved final deliverables are transferred or licensed to the Client as agreed for the project. Wiscode Studio retains ownership of unused concepts, working files, internal methods, templates, pre-existing materials and production systems unless expressly agreed otherwise. Third-party assets remain subject to their respective licences.
+
+8. PORTFOLIO & PUBLICITY
+Unless the project is confidential or the Client requests otherwise in writing, Wiscode Studio may display approved completed work for portfolio, case-study and promotional purposes.
+
+9. CONFIDENTIALITY
+Both parties will take reasonable care with confidential business information received through the project and will not intentionally disclose confidential material except where necessary to perform the work or where disclosure is legally required.
+
+10. CANCELLATION
+If a project is cancelled after work has begun, the Client remains responsible for completed work, approved milestones and reasonable non-recoverable costs already incurred. Any refund or remaining amount will be determined from the work completed and payments already received.
+
+11. ACCEPTANCE
+Approval, signature or other recorded acceptance of this agreement confirms that both parties intend to proceed according to the agreed scope, commercial terms and project records.
+
+This contract text is an editable StudioDesk starting template and may be customized for the specific project.`;
+}
+
+function contractModal(projectId,c=null){
+  const p=projectById(projectId);
+
+  const existingTerms=String(c?.terms||'').trim();
+  const terms=existingTerms||standardContractTerms(p);
+
+  const milestones=(c?.milestones||[])
+    .map(m=>`${m.label} | ${m.amount}`)
+    .join('\n');
+
+  return `${modalHead(
+    'Commercial agreement',
+    c?'Edit contract':'Create contract',
+    'Start from the Wiscode standard agreement, then customise the clauses, milestones and commercial terms for this project.'
+  )}
+
+  <form id="contract-form"
+        class="stack-form"
+        data-contract-id="${c?.id||''}">
+
+    <input type="hidden"
+           name="projectId"
+           value="${projectId}">
+
+    <div class="info-box">
+      <strong>Standard editable agreement</strong><br>
+      StudioDesk has pre-filled Wiscode Studio's general creative-services copy.
+      Edit anything required for this client before issuing it.
+      The template should be professionally reviewed before being adopted as Wiscode's definitive legal wording.
+    </div>
+
+    <label>
+      Agreement title
+      <input
+        name="title"
+        value="${esc(c?.title||`${p?.name||'Project'} Agreement`)}">
+    </label>
+
+    <div class="form-grid two">
+
+      <label>
+        Contract value
+        <input
+          type="number"
+          name="value"
+          value="${Number(c?.value||p?.contractValue||p?.totalValue||0)}">
+      </label>
+
+      <label>
+        Currency
+        <select name="currency">
+          <option value="NGN" ${(c?.currency||p?.currency||'NGN')==='NGN'?'selected':''}>NGN</option>
+          <option value="USD" ${(c?.currency||p?.currency)==='USD'?'selected':''}>USD</option>
+          <option value="GBP" ${(c?.currency||p?.currency)==='GBP'?'selected':''}>GBP</option>
+        </select>
+      </label>
+
+    </div>
+
+    <label>
+      Contract terms
+      <textarea
+        name="terms"
+        rows="24">${esc(terms)}</textarea>
+      <small>
+        This is working contract copy—not a locked template.
+        Modify clauses to match the actual agreement before sending.
+      </small>
+    </label>
+
+    <label>
+      Existing signed contract / Drive URL
+      <input
+        name="documentUrl"
+        value="${esc(c?.documentUrl||'')}"
+        placeholder="Optional link to an externally signed agreement">
+    </label>
+
+    <label>
+      Payment milestones
+      <textarea
+        name="milestonesText"
+        rows="5"
+        placeholder="Initial payment | 50000
+Final balance | 50000">${esc(milestones)}</textarea>
+      <small>One milestone per line: Description | Amount</small>
+    </label>
+
+    <label>
+      Agreement status
+      <select name="status">
+
+        <option value="draft"
+          ${!c||c?.status==='draft'?'selected':''}>
+          Draft
+        </option>
+
+        ${canFinalizeCommercial()?`
+          <option value="sent"
+            ${c?.status==='sent'?'selected':''}>
+            Sent
+          </option>
+
+          <option value="accepted"
+            ${c?.status==='accepted'?'selected':''}>
+            Accepted
+          </option>
+
+          <option value="signed"
+            ${c?.status==='signed'?'selected':''}>
+            Signed
+          </option>
+        `:''}
+
+      </select>
+
+      <small>
+        ${canFinalizeCommercial()
+          ?'You can finalize agreement status.'
+          :'Workers prepare drafts; Finance/Admin finalizes sending and signing states.'}
+      </small>
+    </label>
+
+    <button class="primary-button">
+      Save agreement
+    </button>
+
+  </form>`;
+}
+
+
 function serviceListModal(){const rows=currentServices().filter(x=>x.active!==false);return `${modalHead('Client document','Create service list / order form','Select services, adjust quantities and share a branded client-facing list.')}<form id="service-list-form" class="stack-form"><label>Client / recipient<input name="clientName" placeholder="Client or company"></label><div class="service-order-picker">${rows.map(x=>`<label class="service-order-row"><input type="checkbox" name="serviceIds" value="${x.id}"><span><strong>${esc(x.name)}</strong><small>${esc(x.description||'')}</small></span><b>${fmt(x.price||0,x.currency||'NGN')}</b></label>`).join('')}</div><label>Notes<textarea name="notes" placeholder="Validity, scope notes or next steps"></textarea></label><button class="primary-button">Preview / Share service list</button></form>`;}
 function invoiceModal(projectId='',invoice=null){const ps=projects().filter(canDraftProjectCommercial),editing=Boolean(invoice);return `${modalHead('Finance',editing?'Edit draft invoice':'Create draft invoice',editing?'Drafts remain editable and private until sent.':'Creating an invoice does not change the project contract value.')}<form id="invoice-form" class="stack-form" data-invoice-id="${invoice?.id||''}"><label>Project<select name="projectId" required ${editing?'disabled':''}><option value="">Select project</option>${ps.map(p=>`<option value="${p.id}" ${(p.id===(invoice?.projectId||projectId))?'selected':''}>${esc(p.name)} · ${esc(p.clientName||'')}</option>`).join('')}</select>${editing?`<input type="hidden" name="projectId" value="${invoice.projectId}">`:''}</label><div class="form-grid two"><label>Amount<input type="number" name="amount" required min="0" value="${Number(invoice?.amount||0)}"></label><label>Currency<select name="currency"><option ${invoice?.currency==='NGN'?'selected':''}>NGN</option><option ${invoice?.currency==='USD'?'selected':''}>USD</option><option ${invoice?.currency==='GBP'?'selected':''}>GBP</option></select></label></div><label>Due date<input type="date" name="dueDate" value="${esc(invoice?.dueDate||'')}"></label><label>Purpose / milestone<input name="milestoneLabel" value="${esc(invoice?.milestoneLabel||'')}" placeholder="50% deposit, final balance, etc."></label><label>Notes<textarea name="notes">${esc(invoice?.notes||'')}</textarea></label><button class="primary-button">${editing?'Save draft changes':'Save draft invoice'}</button></form>`;}
 function paymentModal(invoice){return `${modalHead('Payment','Record payment for verification')}<form id="payment-form" class="stack-form" data-invoice-id="${invoice.id}"><div class="info-box">${esc(invoice.invoiceNo)} · Balance ${fmt(invoice.balance,invoice.currency||'NGN')}</div><label>Amount received / claimed<input type="number" name="amount" required value="${Number(invoice.balance||0)}"></label><label>Method<select name="method"><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="card_manual">Card / POS</option><option value="other">Other</option></select></label><label>Reference / narration<input name="reference"></label><label>Evidence / receipt URL<input name="evidenceUrl" placeholder="Drive link or image URL"></label><label>Notes<textarea name="notes"></textarea></label><button class="primary-button">Submit for verification</button></form>`;}
