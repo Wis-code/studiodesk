@@ -11,3 +11,5 @@ Home shows active projects, tasks due today/overdue, outstanding issued invoices
 Gradients, decorative animations, shadows and backdrop effects have been removed. Light/dark preferences remain. The service-worker cache version is updated.
 
 Validation: node tests/workspace-smoke.cjs; node --input-type=module --check < app.js. Financial document generation and services/firestore.js are unchanged. Authenticated live Firebase and visual browser checks are still required before production deployment.
+
+Follow-up checks: unsaved notes survive background renders; Google signup requests worker approval; primary buttons and progress indicators keep solid accent fills and keyboard focus outlines remain visible. Hosting excludes tests and release notes. Browser visual testing was attempted but could not run because Chromium is not installed in the execution workspace.

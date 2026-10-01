@@ -1,0 +1,22 @@
+name: Validate StudioDesk
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  workspace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          for file in app.js sw.js core/*.js services/*.js data/*.js config/*.js; do
+            node --input-type=module --check < "$file"
+          done
+      - name: Check internal workspace behavior
+        run: node tests/workspace-smoke.cjs

@@ -265,3 +265,11 @@ body::before,body::after,.command-hero::before,.command-hero::after,.primary-but
 .project-tabs button.active{color:var(--workspace-text);border-color:var(--mint)}
 .page-heading h2{font-size:32px}
 @media(max-width:760px){.metrics{grid-template-columns:1fr 1fr}.metrics .metric-card:last-child{grid-column:1/-1}.page-heading h2{font-size:26px}}
+
+/* Preserve action and progress contrast after removing gradients. */
+.primary-button,.progress span,.tour-progress span{background:var(--mint)!important;color:#10201e!important}
+.avatar,.worker-photo{background:#66fecb;color:#10201e}
+.attention-list>button{grid-template-columns:1fr auto}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--mint);outline-offset:3px}
+.auth-card{background:var(--workspace-panel)!important;color:var(--workspace-text)!important}
+html[data-theme="light"] .auth-card{border-color:var(--line)}

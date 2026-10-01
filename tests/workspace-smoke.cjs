@@ -32,6 +32,7 @@ const queue=run('actionQueue()');
 assert.match(queue,/OVERDUE/);assert.match(queue,/DUE TASK/);
 assert.doesNotMatch(queue,/DRAFT|DONE TASK/);
 assert.match(run('ownerDashboard()'),/Outstanding/);
+run(`state.noteDrafts.p='Unsaved feedback';`);assert.match(run(`projectNotesTab(state.workspace.projects[0])`),/Unsaved feedback/);
 const css=fs.readFileSync(path.join(root,'styles.css'),'utf8');
 assert.doesNotMatch(css,/(linear|radial|conic)-gradient\(/);
 console.log('Workspace smoke checks passed: routes, roles, forms, project tabs, notes access, receivables and deadline queue.');
