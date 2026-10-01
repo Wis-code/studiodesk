@@ -1,4 +1,4 @@
-const CACHE = 'studiodesk-v0.6.0';
+const CACHE = 'studiodesk-v0.7.0';
 const CORE = [
   './', './index.html', './styles.css', './app.js',
   './assets/studiodesk-mark.png', './manifest.webmanifest',
@@ -31,3 +31,4 @@ self.addEventListener('fetch', event => {
       .catch(() => caches.match(event.request))
   );
 });
+
