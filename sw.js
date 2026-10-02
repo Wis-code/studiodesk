@@ -1,9 +1,9 @@
-const CACHE = 'studiodesk-v0.7.0';
+const CACHE = 'studiodesk-v0.7.1';
 const CORE = [
   './', './index.html', './styles.css', './app.js',
   './assets/studiodesk-mark.png', './manifest.webmanifest',
   './config/firebase-config.js',
-  './core/pricing-engine.js', './core/diagnostic-engine.js',
+  './core/invoice-payment.js', './core/pricing-engine.js', './core/diagnostic-engine.js',
   './core/project-engine.js', './core/permissions.js',
   './services/firebase.js', './services/auth.js', './services/firestore.js',
   './data/seed.js'
@@ -31,4 +31,5 @@ self.addEventListener('fetch', event => {
       .catch(() => caches.match(event.request))
   );
 });
+
 
